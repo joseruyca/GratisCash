@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config.dart';
 import 'models.dart';
 
-abstract class OportuRepository {
+abstract class GratisCashRepository {
   Future<List<Opportunity>> listOpportunities({
     bool includeExpired = false,
     OpportunityCategory? category,
@@ -66,7 +66,7 @@ abstract class OportuRepository {
   Future<void> deleteMyAccount();
 }
 
-class SupabaseRepository implements OportuRepository {
+class SupabaseRepository implements GratisCashRepository {
   SupabaseClient get db => Supabase.instance.client;
 
   String get _uid {
@@ -230,8 +230,8 @@ class SupabaseRepository implements OportuRepository {
     final name = displayName.trim();
     final handle = username.trim().toLowerCase();
     const reserved = <String>{
-      'oportu',
-      'oportuapp',
+      'gratiscash',
+      'gratiscashapp',
       'admin',
       'administrator',
       'moderator',

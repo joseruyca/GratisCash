@@ -1,4 +1,4 @@
-# Oportu V6 · checklist de lanzamiento
+# GratisCash V6 · checklist de lanzamiento
 
 ## Legal e identidad
 - [ ] `LEGAL_OWNER`, `LEGAL_EMAIL`, `LEGAL_ADDRESS` reales.

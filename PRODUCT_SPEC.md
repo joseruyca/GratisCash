@@ -1,4 +1,4 @@
-# Oportu — especificación de producto V6
+# GratisCash — especificación de producto V6
 
 ## Propuesta
 Feed comunitario de oportunidades verificables: estudios remunerados, pruebas de producto, cashback, bonus y misiones. El catálogo inicial lo carga administración manualmente; la comunidad puede proponer nuevas oportunidades, pero nunca publicarlas directamente.

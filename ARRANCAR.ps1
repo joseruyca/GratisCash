@@ -17,7 +17,7 @@ Set-Location $project
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " OPORTU | VALIDAR Y ABRIR" -ForegroundColor Cyan
+Write-Host " GRATISCASH | VALIDAR Y ABRIR" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -38,11 +38,11 @@ if ($LASTEXITCODE -ne 0) { throw "flutter test ha fallado." }
 $defines = @()
 if (Test-Path $configFile) {
     . $configFile
-    if ($null -eq $OportuConfig) {
-        throw "tool\local_config.ps1 existe pero no define `$OportuConfig."
+    if ($null -eq $GratisCashConfig) {
+        throw "tool\local_config.ps1 existe pero no define `$GratisCashConfig."
     }
-    foreach ($key in $OportuConfig.Keys) {
-        $value = [string]$OportuConfig[$key]
+    foreach ($key in $GratisCashConfig.Keys) {
+        $value = [string]$GratisCashConfig[$key]
         $defines += "--dart-define=$key=$value"
     }
     Write-Host ""
@@ -50,12 +50,12 @@ if (Test-Path $configFile) {
 } else {
     Write-Host ""
     Write-Host "No hay backend real conectado todavía." -ForegroundColor Yellow
-    Write-Host "Oportu abrirá el bloqueo de configuración, no datos simulados." -ForegroundColor Yellow
+    Write-Host "GratisCash abrirá el bloqueo de configuración, no datos simulados." -ForegroundColor Yellow
 }
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host " OPORTU VALIDADO" -ForegroundColor Green
+Write-Host " GRATISCASH VALIDADO" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Direccion:" -ForegroundColor Cyan
@@ -66,4 +66,4 @@ $openCommand = "Start-Sleep -Seconds 5; Start-Process '$url'"
 Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile", "-Command", $openCommand | Out-Null
 
 & $flutter run -d chrome --web-port $port @defines
-if ($LASTEXITCODE -ne 0) { throw "Oportu no ha podido arrancar en Chrome." }
+if ($LASTEXITCODE -ne 0) { throw "GratisCash no ha podido arrancar en Chrome." }

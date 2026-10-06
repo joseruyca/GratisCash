@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:oportu/core/safe_url.dart';
+import 'package:gratiscash/core/safe_url.dart';
 
 void main() {
   test('acepta HTTPS normal', () {

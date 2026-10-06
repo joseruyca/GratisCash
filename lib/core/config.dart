@@ -1,7 +1,9 @@
 class AppConfig {
-  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const appEnvironment = String.fromEnvironment('APP_ENV', defaultValue: 'staging');
+  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://qmuyrobiqowcjgbpyliv.supabase.co');
   static const supabasePublishableKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
+    defaultValue: 'sb_publishable_QzSCaKTlqSbzaBNHCWqs9Q_2ugIP0AW',
   );
   static const legacyAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
@@ -19,19 +21,21 @@ class AppConfig {
   );
   static const websiteUrl = String.fromEnvironment(
     'WEBSITE_URL',
-    defaultValue: 'http://localhost:8080',
+    defaultValue: 'https://gratiscashv1.vercel.app',
   );
   static const authRedirectUrl = String.fromEnvironment(
     'AUTH_REDIRECT_URL',
-    defaultValue: 'http://localhost:8080/auth',
+    defaultValue: 'https://gratiscashv1.vercel.app/auth',
   );
 
-  static const termsVersion = '2026-10-05';
+  static const termsVersion = '2026-10-06';
   static const minimumAccountAge = 18;
 
   static String get supabaseClientKey => supabasePublishableKey.isNotEmpty
       ? supabasePublishableKey
       : legacyAnonKey;
+
+  static bool get isProduction => appEnvironment.toLowerCase() == 'production';
 
   static bool get backendConfigured =>
       supabaseUrl.startsWith('https://') && supabaseClientKey.isNotEmpty;

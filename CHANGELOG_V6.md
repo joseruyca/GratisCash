@@ -1,4 +1,4 @@
-# Oportu PRO V6 — producción, moderación y seguridad
+# GratisCash PRO V6 — producción, moderación y seguridad
 
 - Eliminado todo runtime de demostración: sin `DemoRepository`, `demoMode`, usuarios ficticios ni acciones simuladas.
 - Sin backend real, la app no inventa contenido: muestra un bloqueo explícito de configuración.

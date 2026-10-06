@@ -1,4 +1,4 @@
-# OPORTU V7 — endurecimiento y pulido de producto
+# GRATISCASH V7 — endurecimiento y pulido de producto
 
 - Compatibilidad corregida con Dart 3.11.x (`sdk >=3.11.0`), evitando el bloqueo de dependencias detectado en el equipo local.
 - Versión actualizada a `1.5.0+7`.

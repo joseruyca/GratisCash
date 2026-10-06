@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class OportuTheme {
+class GratisCashTheme {
   static const green = Color(0xFF009B70);
   static const greenDark = Color(0xFF067656);
   static const dark = Color(0xFF102033);

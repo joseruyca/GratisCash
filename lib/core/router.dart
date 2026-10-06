@@ -98,7 +98,7 @@ class AppShell extends StatelessWidget {
               extended: extraWide,
               selectedIndex: selected,
               onDestinationSelected: (index) => _go(context, index),
-              leading: Padding(padding: const EdgeInsets.symmetric(vertical: 18), child: OportuLogo(compact: !extraWide)),
+              leading: Padding(padding: const EdgeInsets.symmetric(vertical: 18), child: GratisCashLogo(compact: !extraWide)),
               labelType: extraWide ? NavigationRailLabelType.none : NavigationRailLabelType.all,
               destinations: const [
                 NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Inicio')),
@@ -137,13 +137,14 @@ class AppShell extends StatelessWidget {
   }
 }
 
+
 class _RouteNotFoundScreen extends StatelessWidget {
   const _RouteNotFoundScreen();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const OportuLogo()),
+      appBar: AppBar(title: const GratisCashLogo()),
       body: EmptyState(
         icon: Icons.explore_off_outlined,
         title: 'Esta página no existe',

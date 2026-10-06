@@ -5,7 +5,7 @@ import 'theme.dart';
 class BackendSetupScreen extends StatelessWidget {
   const BackendSetupScreen({
     super.key,
-    this.title = 'Oportu necesita su backend real',
+    this.title = 'GratisCash necesita su backend real',
     this.message =
         'Esta versión no incluye datos ni cuentas simuladas. Configura SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY para ejecutar el producto real.',
   });
@@ -17,7 +17,7 @@ class BackendSetupScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: OportuTheme.light,
+      theme: GratisCashTheme.light,
       home: Scaffold(
         body: SafeArea(
           child: Center(
@@ -38,7 +38,7 @@ class BackendSetupScreen extends StatelessWidget {
                       child: const Icon(
                         Icons.shield_outlined,
                         size: 36,
-                        color: OportuTheme.greenDark,
+                        color: GratisCashTheme.greenDark,
                       ),
                     ),
                     const SizedBox(height: 22),
@@ -56,7 +56,7 @@ class BackendSetupScreen extends StatelessWidget {
                       message,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: OportuTheme.muted,
+                        color: GratisCashTheme.muted,
                         height: 1.5,
                         fontSize: 15,
                       ),
@@ -68,10 +68,10 @@ class BackendSetupScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: OportuTheme.border),
+                        border: Border.all(color: GratisCashTheme.border),
                       ),
                       child: const Text(
-                        'Protección de lanzamiento: Oportu no simula un backend ni publica una build de producción con configuración legal incompleta.',
+                        'Protección de lanzamiento: GratisCash no simula un backend ni publica una build de producción con configuración legal incompleta.',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),

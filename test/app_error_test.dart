@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:oportu/core/app_error.dart';
+import 'package:gratiscash/core/app_error.dart';
 
 void main() {
   test('no expone errores internos desconocidos al usuario', () {

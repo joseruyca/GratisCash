@@ -1,6 +1,6 @@
 # Copia local creada por PowerShell al conectar el backend.
 # NO incluyas SUPABASE_SERVICE_ROLE_KEY aquí.
-$OportuConfig = @{
+$GratisCashConfig = @{
     SUPABASE_URL             = "https://TU-PROYECTO.supabase.co"
     SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xxx"
     WEBSITE_URL              = "http://localhost:8080"

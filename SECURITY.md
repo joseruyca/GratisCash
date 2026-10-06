@@ -1,4 +1,4 @@
-# Seguridad de Oportu V6
+# Seguridad de GratisCash V6
 
 ## Modelo de confianza
 El cliente Flutter es no confiable. Cualquier persona puede inspeccionar/modificar el APK, IPA o JavaScript web; por tanto, las decisiones de seguridad se validan en PostgreSQL/RLS/RPC/Edge Functions.

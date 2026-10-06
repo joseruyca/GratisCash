@@ -4,9 +4,9 @@ import '../data/repository.dart';
 import 'config.dart';
 
 class Services {
-  static OportuRepository? _repo;
+  static GratisCashRepository? _repo;
 
-  static OportuRepository get repo {
+  static GratisCashRepository get repo {
     final value = _repo;
     if (value == null) {
       throw StateError('Services.init() debe ejecutarse antes de usar el repositorio.');
@@ -20,7 +20,7 @@ class Services {
     }
     if (!AppConfig.backendConfigured) {
       throw StateError(
-        'Falta la configuración de Supabase. Oportu no arranca con datos simulados.',
+        'Falta la configuración de Supabase. GratisCash no arranca con datos simulados.',
       );
     }
 

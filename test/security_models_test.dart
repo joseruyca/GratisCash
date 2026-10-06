@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:oportu/core/config.dart';
-import 'package:oportu/data/models.dart';
+import 'package:gratiscash/core/config.dart';
+import 'package:gratiscash/data/models.dart';
 
 void main() {
   test('el consentimiento de comunidad exige versión vigente y mayoría de edad', () {

@@ -7,7 +7,7 @@ if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-$tmp = Join-Path $env:TEMP ("oportu-src-" + [guid]::NewGuid().ToString())
+$tmp = Join-Path $env:TEMP ("gratiscash-src-" + [guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $tmp | Out-Null
 
 $keep = @(
@@ -45,7 +45,7 @@ if (Test-Path "web\robots.txt") {
     Copy-Item "web\robots.txt" (Join-Path $customWeb "robots.txt") -Force
 }
 
-flutter create --platforms=android,ios,web --org app.oportu --project-name oportu .
+flutter create --platforms=android,ios,web --org com.gratiscash --project-name gratiscash .
 if ($LASTEXITCODE -ne 0) {
     throw "flutter create ha fallado."
 }
@@ -60,6 +60,7 @@ foreach ($item in $keep) {
     }
 }
 
+
 if (Test-Path (Join-Path $customWeb "index.html")) {
     Copy-Item (Join-Path $customWeb "index.html") "web\index.html" -Force
 }
@@ -67,13 +68,13 @@ if (Test-Path (Join-Path $customWeb "robots.txt")) {
     Copy-Item (Join-Path $customWeb "robots.txt") "web\robots.txt" -Force
 }
 
-# Oportu Web es una web responsive del producto, no una PWA instalable.
+# GratisCash Web es una web responsive del producto, no una PWA instalable.
 Remove-Item "web\manifest.json" -Force -ErrorAction SilentlyContinue
 
 $manifest = "android\app\src\main\AndroidManifest.xml"
 if (Test-Path $manifest) {
     $content = Get-Content $manifest -Raw
-    $content = $content -replace 'android:label="oportu"', 'android:label="Oportu"'
+    $content = $content -replace 'android:label="gratiscash"', 'android:label="GratisCash"'
     Set-Content $manifest $content -Encoding UTF8
 }
 
@@ -93,4 +94,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-Write-Host "Oportu listo. Android/iOS/web generados y código validado." -ForegroundColor Green
+Write-Host "GratisCash listo. Android/iOS/web generados y código validado." -ForegroundColor Green

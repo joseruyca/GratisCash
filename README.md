@@ -1,12 +1,12 @@
-# OPORTU PRO V6
+# GRATISCASH PRO V6
 
-Oportu es una plataforma mobile-first de oportunidades verificables construida con Flutter para Android, iOS y web responsive, con Supabase como backend.
+GratisCash es una plataforma mobile-first de oportunidades verificables construida con Flutter para Android, iOS y web responsive, con Supabase como backend.
 
 > Compatibilidad local: Dart 3.11 o superior y Flutter compatible. La restricción anterior de Dart 3.13 fue eliminada en V7.
 
 ## Estado V6
 
-V7 mantiene la limpieza iniciada en V6 y elimina por completo el runtime de demostración. No existe `DemoRepository`, `demoMode`, perfiles ficticios ni actividad social simulada. Si el backend real no está configurado, Oportu bloquea el arranque y muestra una pantalla de configuración segura en lugar de fingir que funciona.
+V7 mantiene la limpieza iniciada en V6 y elimina por completo el runtime de demostración. No existe `DemoRepository`, `demoMode`, perfiles ficticios ni actividad social simulada. Si el backend real no está configurado, GratisCash bloquea el arranque y muestra una pantalla de configuración segura en lugar de fingir que funciona.
 
 La arquitectura está preparada para producción, pero **no debe publicarse todavía** hasta completar identidad legal, proyecto Supabase de producción, firma de tiendas y validación end-to-end descrita en `RELEASE_CHECKLIST.md`.
 
@@ -24,7 +24,7 @@ La arquitectura está preparada para producción, pero **no debe publicarse toda
 
 ## Duplicados
 
-Oportu usa dos niveles:
+GratisCash usa dos niveles:
 
 1. **Bloqueo objetivo**: una URL normalizada idéntica que ya está activa o pendiente puede bloquear el nuevo envío.
 2. **Señal de similitud**: título/fuente parecidos se muestran al usuario y a moderación, pero nunca provocan un rechazo automático por sí solos.
@@ -53,7 +53,7 @@ Ver `SECURITY.md` y `LEGAL_AND_MODERATION.md`.
 
 Para un proyecto Supabase nuevo ejecuta, en orden:
 
-1. `supabase/migrations/001_oportu.sql`
+1. `supabase/migrations/001_gratiscash.sql`
 2. `supabase/migrations/002_production_hardening.sql`
 3. despliega `supabase/functions/delete-account`
 
@@ -62,7 +62,7 @@ Después configura Auth: confirmación de email, redirects/deep links cerrados, 
 ## Ejecutar con backend real
 
 ```powershell
-cd "$env:USERPROFILE\Desktop\OPORTU"
+cd "$env:USERPROFILE\Desktop\GRATISCASH"
 
 & "C:\src\flutter\bin\flutter.bat" run -d chrome --web-port 8080 `
   --dart-define=SUPABASE_URL=https://TU-PROYECTO.supabase.co `

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:oportu/data/models.dart';
+import 'package:gratiscash/data/models.dart';
 
 Opportunity _opportunity({
   OpportunityStatus status = OpportunityStatus.active,

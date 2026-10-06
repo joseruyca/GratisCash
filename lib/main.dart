@@ -15,7 +15,7 @@ Future<void> main() async {
     return;
   }
 
-  if (kReleaseMode && !AppConfig.legalConfigured) {
+  if (kReleaseMode && AppConfig.isProduction && !AppConfig.legalConfigured) {
     runApp(
       const BackendSetupScreen(
         title: 'Falta completar la información legal',
@@ -27,18 +27,18 @@ Future<void> main() async {
   }
 
   await Services.init();
-  runApp(const OportuApp());
+  runApp(const GratisCashApp());
 }
 
-class OportuApp extends StatelessWidget {
-  const OportuApp({super.key});
+class GratisCashApp extends StatelessWidget {
+  const GratisCashApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Oportu',
+      title: 'GratisCash',
       debugShowCheckedModeBanner: false,
-      theme: OportuTheme.light,
+      theme: GratisCashTheme.light,
       routerConfig: router,
     );
   }

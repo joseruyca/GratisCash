@@ -110,9 +110,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'La cuenta dejará de existir. Oportu eliminará el contenido generado por ti que siga asociado a la cuenta, además de guardados, votos, comentarios y datos de perfil. Solo se conservará un dato concreto si existe una obligación legal que lo exija.',
+                      'La cuenta dejará de existir. GratisCash eliminará el contenido generado por ti que siga asociado a la cuenta, además de guardados, votos, comentarios y datos de perfil. Solo se conservará un dato concreto si existe una obligación legal que lo exija.',
                       style: TextStyle(
-                        color: OportuTheme.muted,
+                        color: GratisCashTheme.muted,
                         height: 1.48,
                       ),
                     ),
@@ -123,7 +123,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '• La acción no se puede deshacer.\n• Perderás tus guardados y acceso a la cuenta.\n• Tus comentarios y oportunidades creadas como usuario se eliminarán.\n• Las fichas editoriales de Oportu no dependen de tu cuenta.',
+                      '• La acción no se puede deshacer.\n• Perderás tus guardados y acceso a la cuenta.\n• Tus comentarios y oportunidades creadas como usuario se eliminarán.\n• Las fichas editoriales de GratisCash no dependen de tu cuenta.',
                       style: TextStyle(height: 1.55),
                     ),
                     const SizedBox(height: 18),
@@ -164,7 +164,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 'También disponible en la web: ${AppConfig.websiteUrl}/account/delete',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: OportuTheme.muted,
+                  color: GratisCashTheme.muted,
                   fontSize: 12,
                 ),
               ),
