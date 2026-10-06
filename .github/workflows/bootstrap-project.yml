@@ -1,0 +1,35 @@
+name: Bootstrap full project
+
+on:
+  push:
+    paths:
+      - 'bootstrap/project.b64'
+      - '.github/workflows/bootstrap-project.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore full project
+        shell: bash
+        run: |
+          if [ ! -f bootstrap/project.b64 ]; then
+            echo "Bootstrap payload already consumed."
+            exit 0
+          fi
+          base64 -d bootstrap/project.b64 > /tmp/project.zip
+          unzip -o /tmp/project.zip -d .
+          rm -rf bootstrap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: restore full GratisCash project"
+          git push
