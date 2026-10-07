@@ -384,6 +384,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           passwordValidator: _passwordValidator,
                           confirmValidator: _confirmValidator,
                           onSubmit: _authenticate,
+                          onGoogle: _signInWithGoogle,
                           onReset: _resetPassword,
                           onResendConfirmation: _resendConfirmation,
                           onTermsChanged: (value) =>
