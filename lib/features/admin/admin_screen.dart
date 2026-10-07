@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/app_error.dart';
 import '../../core/services.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
@@ -314,6 +315,7 @@ class _AdminScreenState extends State<AdminScreen>
                     ),
                     _MetricsTab(
                       key: ValueKey('metrics-$_refreshKey'),
+                      canEdit: canManageRoles,
                     ),
                   ],
                 ),
@@ -975,12 +977,201 @@ double _toDouble(dynamic value) {
 }
 
 
-class _MetricsTab extends StatelessWidget {
-  const _MetricsTab({super.key});
+class _MetricsTab extends StatefulWidget {
+  const _MetricsTab({
+    super.key,
+    required this.canEdit,
+  });
+
+  final bool canEdit;
+
+  @override
+  State<_MetricsTab> createState() => _MetricsTabState();
+}
+
+class _MetricsTabState extends State<_MetricsTab> {
+  int _refreshKey = 0;
+
+  Future<void> _editMonetization(Map<String, dynamic> row) async {
+    if (!widget.canEdit) return;
+
+    final network = TextEditingController(
+      text: (row['monetization_network'] ?? '').toString(),
+    );
+    final commission = TextEditingController(
+      text: row['commission_estimate'] == null
+          ? ''
+          : _toDouble(row['commission_estimate']).toStringAsFixed(2),
+    );
+    final conversions = TextEditingController(
+      text: _toInt(row['conversions']).toString(),
+    );
+    final revenue = TextEditingController(
+      text: _toDouble(row['revenue_total']).toStringAsFixed(2),
+    );
+    final currency = TextEditingController(
+      text: (row['monetization_currency'] ?? 'EUR').toString(),
+    );
+    var model = (row['monetization_model'] ?? 'none').toString();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Monetización de la oportunidad'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: model,
+                    decoration: const InputDecoration(labelText: 'Modelo'),
+                    items: const [
+                      DropdownMenuItem(value: 'none', child: Text('Sin monetizar')),
+                      DropdownMenuItem(value: 'affiliate', child: Text('Afiliación')),
+                      DropdownMenuItem(value: 'cpa', child: Text('CPA · adquisición')),
+                      DropdownMenuItem(value: 'cpl', child: Text('CPL · lead')),
+                      DropdownMenuItem(value: 'sponsored', child: Text('Patrocinada')),
+                      DropdownMenuItem(value: 'direct', child: Text('Acuerdo directo')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setDialogState(() => model = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: network,
+                    maxLength: 120,
+                    decoration: const InputDecoration(
+                      labelText: 'Red / programa',
+                      hintText: 'Awin, Tradedoubler, Directo…',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: commission,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: 'Comisión estimada'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 110,
+                        child: TextField(
+                          controller: currency,
+                          maxLength: 3,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: const InputDecoration(labelText: 'Moneda', counterText: ''),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: conversions,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Conversiones'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: revenue,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: 'Ingresos confirmados'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Datos privados. No modifican votos, ranking ni la selección editorial.',
+                    style: TextStyle(color: GratisCashTheme.muted, fontSize: 12, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved != true) {
+      network.dispose(); commission.dispose(); conversions.dispose();
+      revenue.dispose(); currency.dispose();
+      return;
+    }
+
+    final parsedCommission = commission.text.trim().isEmpty
+        ? null
+        : double.tryParse(commission.text.trim().replaceAll(',', '.'));
+    final parsedConversions = int.tryParse(conversions.text.trim()) ?? 0;
+    final parsedRevenue = double.tryParse(revenue.text.trim().replaceAll(',', '.')) ?? 0;
+    final parsedCurrency = currency.text.trim().toUpperCase();
+
+    if ((commission.text.trim().isNotEmpty && parsedCommission == null) ||
+        parsedConversions < 0 ||
+        parsedRevenue < 0 ||
+        !RegExp(r'^[A-Z]{3}$').hasMatch(parsedCurrency)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Revisa comisión, conversiones, ingresos y moneda.')),
+        );
+      }
+      network.dispose(); commission.dispose(); conversions.dispose();
+      revenue.dispose(); currency.dispose();
+      return;
+    }
+
+    try {
+      await Services.repo.saveOpportunityMonetization(
+        opportunityId: row['opportunity_id'].toString(),
+        model: model,
+        network: network.text,
+        commissionEstimate: parsedCommission,
+        currency: parsedCurrency,
+        conversions: parsedConversions,
+        revenueTotal: parsedRevenue,
+      );
+      if (!mounted) return;
+      setState(() => _refreshKey++);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Monetización actualizada.')),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(publicErrorMessage(error))),
+        );
+      }
+    } finally {
+      network.dispose(); commission.dispose(); conversions.dispose();
+      revenue.dispose(); currency.dispose();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
+      key: ValueKey(_refreshKey),
       future: Services.repo.opportunityMetricsForAdmin(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -1003,16 +1194,10 @@ class _MetricsTab extends StatelessWidget {
           );
         }
 
-        final total30d = rows.fold<int>(
-          0,
-          (sum, row) => sum + _toInt(row['clicks_30d']),
-        );
-        final sponsored30d = rows.fold<int>(
-          0,
-          (sum, row) =>
-              sum +
-              (row['is_sponsored'] == true ? _toInt(row['clicks_30d']) : 0),
-        );
+        final total30d = rows.fold<int>(0, (sum, row) => sum + _toInt(row['clicks_30d']));
+        final conversions = rows.fold<int>(0, (sum, row) => sum + _toInt(row['conversions']));
+        final revenueTotal = rows.fold<double>(0, (sum, row) => sum + _toDouble(row['revenue_total']));
+        final monetized = rows.where((row) => (row['monetization_model'] ?? 'none').toString() != 'none').length;
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -1021,39 +1206,26 @@ class _MetricsTab extends StatelessWidget {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _MetricSummary(
-                  label: 'Salidas · 30 días',
-                  value: '$total30d',
-                  icon: Icons.open_in_new_rounded,
-                ),
-                _MetricSummary(
-                  label: 'Patrocinadas · 30 días',
-                  value: '$sponsored30d',
-                  icon: Icons.campaign_outlined,
-                ),
-                _MetricSummary(
-                  label: 'Oportunidades con datos',
-                  value: '${rows.length}',
-                  icon: Icons.local_offer_outlined,
-                ),
+                _MetricSummary(label: 'Salidas · 30 días', value: '$total30d', icon: Icons.open_in_new_rounded),
+                _MetricSummary(label: 'Ingresos registrados', value: '${revenueTotal.toStringAsFixed(2)} €', icon: Icons.euro_rounded),
+                _MetricSummary(label: 'Conversiones', value: '$conversions', icon: Icons.task_alt_rounded),
+                _MetricSummary(label: 'Monetizadas', value: '$monetized / ${rows.length}', icon: Icons.payments_outlined),
               ],
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Rendimiento por oportunidad',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Rendimiento por oportunidad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                ),
+                if (widget.canEdit)
+                  const Text('Pulsa el lápiz para editar', style: TextStyle(color: GratisCashTheme.muted, fontSize: 12)),
+              ],
             ),
             const SizedBox(height: 4),
             const Text(
-              'Métrica orientativa: cuenta salidas registradas por GratisCash, sin guardar IP, email ni identidad del visitante.',
-              style: TextStyle(
-                color: GratisCashTheme.muted,
-                fontSize: 12.5,
-                height: 1.4,
-              ),
+              'Los clics son orientativos. Conversiones e ingresos deben venir de datos confirmados por la red o acuerdo comercial.',
+              style: TextStyle(color: GratisCashTheme.muted, fontSize: 12.5, height: 1.4),
             ),
             const SizedBox(height: 12),
             for (final row in rows)
@@ -1061,16 +1233,12 @@ class _MetricsTab extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 10),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: row['is_sponsored'] == true
-                        ? const Color(0xFFFFF3D9)
-                        : const Color(0xFFF0F2F4),
+                    backgroundColor: (row['monetization_model'] ?? 'none') == 'none'
+                        ? const Color(0xFFF0F2F4)
+                        : const Color(0xFFEAF0FF),
                     child: Icon(
-                      row['is_sponsored'] == true
-                          ? Icons.campaign_outlined
-                          : Icons.open_in_new_rounded,
-                      color: row['is_sponsored'] == true
-                          ? GratisCashTheme.amber
-                          : GratisCashTheme.muted,
+                      (row['monetization_model'] ?? 'none') == 'none' ? Icons.open_in_new_rounded : Icons.payments_outlined,
+                      color: (row['monetization_model'] ?? 'none') == 'none' ? GratisCashTheme.muted : GratisCashTheme.blue,
                     ),
                   ),
                   title: Text(
@@ -1079,30 +1247,30 @@ class _MetricsTab extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  subtitle: Text(
-                    row['is_sponsored'] == true
-                        ? 'Patrocinada · ${(row['sponsor_name'] ?? 'Marca').toString()}'
-                        : 'Orgánica',
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${_toInt(row['clicks_30d'])}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                  subtitle: Text(_monetizationSubtitle(row), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  trailing: SizedBox(
+                    width: widget.canEdit ? 150 : 92,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('${_toInt(row['clicks_30d'])}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                            const Text('clics · 30 d', style: TextStyle(color: GratisCashTheme.muted, fontSize: 10.5)),
+                          ],
                         ),
-                      ),
-                      const Text(
-                        '30 días',
-                        style: TextStyle(
-                          color: GratisCashTheme.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                        if (widget.canEdit) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Editar monetización',
+                            onPressed: () => _editMonetization(row),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1111,6 +1279,30 @@ class _MetricsTab extends StatelessWidget {
       },
     );
   }
+
+  String _monetizationSubtitle(Map<String, dynamic> row) {
+    final model = (row['monetization_model'] ?? 'none').toString();
+    final network = (row['monetization_network'] ?? '').toString().trim();
+    final conversions = _toInt(row['conversions']);
+    final revenue = _toDouble(row['revenue_total']);
+    final currency = (row['monetization_currency'] ?? 'EUR').toString();
+    final parts = <String>[
+      _modelLabel(model),
+      if (network.isNotEmpty) network,
+      '$conversions conv.',
+      '${revenue.toStringAsFixed(2)} $currency',
+    ];
+    return parts.join(' · ');
+  }
+
+  String _modelLabel(String value) => switch (value) {
+        'affiliate' => 'Afiliación',
+        'cpa' => 'CPA',
+        'cpl' => 'CPL',
+        'sponsored' => 'Patrocinada',
+        'direct' => 'Directo',
+        _ => 'Sin monetizar',
+      };
 }
 
 class _MetricSummary extends StatelessWidget {

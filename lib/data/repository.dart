@@ -58,6 +58,15 @@ abstract class GratisCashRepository {
   Future<List<Map<String, dynamic>>> reportsForAdmin();
   Future<List<Map<String, dynamic>>> usersForAdmin();
   Future<List<Map<String, dynamic>>> opportunityMetricsForAdmin();
+  Future<void> saveOpportunityMonetization({
+    required String opportunityId,
+    required String model,
+    String? network,
+    double? commissionEstimate,
+    String currency = 'EUR',
+    int conversions = 0,
+    double revenueTotal = 0,
+  });
   Future<List<ModerationAppeal>> appealsForAdmin();
   Future<void> moderate(
     String id,
@@ -621,6 +630,31 @@ class SupabaseRepository implements GratisCashRepository {
     return (rows as List<dynamic>)
         .map((row) => Map<String, dynamic>.from(row as Map))
         .toList();
+  }
+
+  @override
+  Future<void> saveOpportunityMonetization({
+    required String opportunityId,
+    required String model,
+    String? network,
+    double? commissionEstimate,
+    String currency = 'EUR',
+    int conversions = 0,
+    double revenueTotal = 0,
+  }) async {
+    await db.rpc(
+      'save_opportunity_monetization',
+      params: {
+        'p_opportunity_id': opportunityId,
+        'p_model': model,
+        'p_network': network?.trim().isEmpty == true ? null : network?.trim(),
+        'p_commission_estimate': commissionEstimate,
+        'p_currency': currency.trim().toUpperCase(),
+        'p_conversions': conversions,
+        'p_revenue_total': revenueTotal,
+        'p_notes': null,
+      },
+    );
   }
 
   @override
