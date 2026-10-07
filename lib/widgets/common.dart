@@ -170,6 +170,7 @@ class OpportunityCard extends StatelessWidget {
     required this.item,
     required this.onTap,
     this.onVote,
+    this.userVote = 0,
     this.onSave,
     this.saved = false,
     this.showStatus = false,
@@ -177,7 +178,8 @@ class OpportunityCard extends StatelessWidget {
 
   final Opportunity item;
   final VoidCallback onTap;
-  final VoidCallback? onVote;
+  final void Function(int value)? onVote;
+  final int userVote;
   final VoidCallback? onSave;
   final bool saved;
   final bool showStatus;
@@ -234,10 +236,12 @@ class OpportunityCard extends StatelessWidget {
                                 !expired)
                               CategoryPill(category: item.category)
                             else
-                              _VoteChip(
-                                count: item.upvotes,
-                                onTap: onVote,
-                                expired: expired,
+                              OpportunityVoteControl(
+                                score: item.voteScore,
+                                userVote: userVote,
+                                onVote: onVote,
+                                disabled: expired,
+                                compact: true,
                               ),
                             const Spacer(),
                             if (showStatus || expired) ...[
@@ -643,42 +647,120 @@ Color categoryAccent(OpportunityCategory category) {
   }
 }
 
-class _VoteChip extends StatelessWidget {
-  const _VoteChip({
-    required this.count,
-    required this.onTap,
-    required this.expired,
+class OpportunityVoteControl extends StatelessWidget {
+  const OpportunityVoteControl({
+    super.key,
+    required this.score,
+    this.userVote = 0,
+    this.onVote,
+    this.disabled = false,
+    this.compact = false,
   });
 
-  final int count;
-  final VoidCallback? onTap;
-  final bool expired;
+  final int score;
+  final int userVote;
+  final void Function(int value)? onVote;
+  final bool disabled;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final foreground = expired ? GratisCashTheme.muted : GratisCashTheme.greenDark;
-    return Material(
-      color: expired ? const Color(0xFFF0F2F4) : const Color(0xFFE4F7EF),
-      borderRadius: BorderRadius.circular(999),
+    final canVote = !disabled && onVote != null;
+    final scoreColor = disabled
+        ? GratisCashTheme.muted
+        : score > 0
+            ? GratisCashTheme.greenDark
+            : score < 0
+                ? GratisCashTheme.coral
+                : GratisCashTheme.muted;
+
+    return Semantics(
+      label: 'Valoración de la comunidad: $score',
+      child: Container(
+        decoration: BoxDecoration(
+          color: disabled ? const Color(0xFFF2F4F5) : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: GratisCashTheme.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _VoteAction(
+              tooltip: userVote == 1 ? 'Quitar voto positivo' : 'Me parece buena',
+              icon: userVote == 1
+                  ? Icons.thumb_up_alt_rounded
+                  : Icons.thumb_up_alt_outlined,
+              selected: userVote == 1,
+              selectedColor: GratisCashTheme.greenDark,
+              onTap: canVote ? () => onVote!(1) : null,
+              compact: compact,
+            ),
+            Container(
+              constraints: BoxConstraints(minWidth: compact ? 34 : 42),
+              alignment: Alignment.center,
+              child: Text(
+                score > 0 ? '+$score' : '$score',
+                style: TextStyle(
+                  color: scoreColor,
+                  fontSize: compact ? 11.5 : 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            _VoteAction(
+              tooltip: userVote == -1 ? 'Quitar voto negativo' : 'No me convence',
+              icon: userVote == -1
+                  ? Icons.thumb_down_alt_rounded
+                  : Icons.thumb_down_alt_outlined,
+              selected: userVote == -1,
+              selectedColor: GratisCashTheme.coral,
+              onTap: canVote ? () => onVote!(-1) : null,
+              compact: compact,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VoteAction extends StatelessWidget {
+  const _VoteAction({
+    required this.tooltip,
+    required this.icon,
+    required this.selected,
+    required this.selectedColor,
+    required this.onTap,
+    required this.compact,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final bool selected;
+  final Color selectedColor;
+  final VoidCallback? onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.arrow_upward_rounded, size: 14, color: foreground),
-              const SizedBox(width: 3),
-              Text(
-                count == 0 ? 'Nuevo' : '$count',
-                style: TextStyle(
-                  color: foreground,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11.5,
-                ),
-              ),
-            ],
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 7 : 9,
+            vertical: compact ? 5 : 7,
+          ),
+          child: Icon(
+            icon,
+            size: compact ? 16 : 18,
+            color: onTap == null
+                ? const Color(0xFFB2BBC3)
+                : selected
+                    ? selectedColor
+                    : GratisCashTheme.muted,
           ),
         ),
       ),

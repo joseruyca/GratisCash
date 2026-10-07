@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_error.dart';
+import '../../core/auth_guard.dart';
 import '../../core/services.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
@@ -30,7 +31,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     super.dispose();
   }
 
-  Future<List<Opportunity>> _load() async {
+  Future<_ExploreData> _load() async {
     final items = await Services.repo.listOpportunities(
       category: _category,
       query: _query.text,
@@ -39,7 +40,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
       items.removeWhere((item) => item.expiresAt == null);
       items.sort((a, b) => a.expiresAt!.compareTo(b.expiresAt!));
     }
-    return items;
+    final voteStates =
+        await Services.repo.voteStates(items.map((item) => item.id));
+    return _ExploreData(items: items, voteStates: voteStates);
+  }
+
+  Future<void> _vote(String id, int value) async {
+    final allowed = await ensureCommunityAccess(
+      context,
+      message: 'Inicia sesión para valorar oportunidades.',
+    );
+    if (!allowed || !mounted) return;
+
+    try {
+      await Services.repo.setVote(id, value);
+      if (mounted) setState(() => _refreshKey++);
+    } catch (error) {
+      if (!mounted) return;
+      final raw = error.toString().toLowerCase();
+      final message = raw.contains('authors cannot vote')
+          ? 'No puedes valorar una oportunidad que has publicado tú.'
+          : publicErrorMessage(error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 
   void _search() {
@@ -134,7 +159,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Opportunity>>(
+            child: FutureBuilder<_ExploreData>(
               key: ValueKey(_refreshKey),
               future: _load(),
               builder: (context, snapshot) {
@@ -154,7 +179,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   );
                 }
 
-                final items = snapshot.data ?? <Opportunity>[];
+                final data = snapshot.data ??
+                    const _ExploreData(
+                      items: <Opportunity>[],
+                      voteStates: <String, int>{},
+                    );
+                final items = data.items;
                 if (items.isEmpty) {
                   return EmptyState(
                     icon: Icons.search_off_rounded,
@@ -203,6 +233,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           final item = items[index];
                           return OpportunityCard(
                             item: item,
+                            userVote: data.voteStates[item.id] ?? 0,
+                            onVote: (value) => _vote(item.id, value),
                             onTap: () => context.go('/opportunity/${item.id}'),
                           );
                         },
@@ -254,4 +286,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ),
     );
   }
+}
+
+class _ExploreData {
+  const _ExploreData({
+    required this.items,
+    required this.voteStates,
+  });
+
+  final List<Opportunity> items;
+  final Map<String, int> voteStates;
 }

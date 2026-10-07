@@ -19,10 +19,13 @@ Future<bool> ensureSignedIn(
   return Services.signedIn;
 }
 
-Future<bool> ensureCommunityAccess(BuildContext context) async {
+Future<bool> ensureCommunityAccess(
+  BuildContext context, {
+  String message = 'Inicia sesión para participar en la comunidad.',
+}) async {
   if (!await ensureSignedIn(
     context,
-    message: 'Inicia sesión para participar en la comunidad.',
+    message: message,
   )) {
     return false;
   }

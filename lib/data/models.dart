@@ -47,6 +47,8 @@ class Opportunity {
     this.requirements,
     this.steps = const [],
     this.upvotes = 0,
+    this.downvotes = 0,
+    this.voteScore = 0,
     this.comments = 0,
     this.authorName = 'GratisCash',
     this.isVerified = false,
@@ -87,6 +89,8 @@ class Opportunity {
   final String? requirements;
   final List<String> steps;
   final int upvotes;
+  final int downvotes;
+  final int voteScore;
   final int comments;
   final String authorName;
   final bool isVerified;
@@ -142,6 +146,8 @@ class Opportunity {
   Opportunity copyWith({
     OpportunityStatus? status,
     int? upvotes,
+    int? downvotes,
+    int? voteScore,
     int? comments,
     bool? isFeatured,
     String? moderationReason,
@@ -172,6 +178,8 @@ class Opportunity {
       requirements: requirements,
       steps: steps,
       upvotes: upvotes ?? this.upvotes,
+      downvotes: downvotes ?? this.downvotes,
+      voteScore: voteScore ?? this.voteScore,
       comments: comments ?? this.comments,
       authorName: authorName,
       isVerified: isVerified,
@@ -209,6 +217,8 @@ class Opportunity {
       'requirements': requirements,
       'steps': steps,
       'upvote_count': upvotes,
+      'downvote_count': downvotes,
+      'vote_score': voteScore,
       'comment_count': comments,
       'author_name': authorName,
       'is_verified': isVerified,
@@ -261,6 +271,8 @@ class Opportunity {
       requirements: map['requirements']?.toString(),
       steps: steps,
       upvotes: _intOrZero(map['upvote_count']),
+      downvotes: _intOrZero(map['downvote_count']),
+      voteScore: _intOrZero(map['vote_score']),
       comments: _intOrZero(map['comment_count']),
       authorName: (map['author_name'] ?? 'GratisCash').toString(),
       isVerified: map['is_verified'] == true,

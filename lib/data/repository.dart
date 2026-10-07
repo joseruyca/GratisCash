@@ -15,7 +15,8 @@ abstract class GratisCashRepository {
   Future<Opportunity?> getOpportunity(String id);
   Future<List<AppComment>> comments(String opportunityId);
   Future<void> addComment(String opportunityId, String body);
-  Future<void> toggleVote(String opportunityId);
+  Future<int> setVote(String opportunityId, int value);
+  Future<Map<String, int>> voteStates(Iterable<String> opportunityIds);
   Future<void> toggleSaved(String opportunityId);
   Future<void> registerOutboundClick(String opportunityId);
   Future<Set<String>> savedIds();
@@ -208,11 +209,41 @@ class SupabaseRepository implements GratisCashRepository {
   }
 
   @override
-  Future<void> toggleVote(String opportunityId) async {
-    await db.rpc(
-      'toggle_opportunity_vote',
-      params: {'p_opportunity_id': opportunityId},
+  Future<int> setVote(String opportunityId, int value) async {
+    if (value != -1 && value != 1) {
+      throw ArgumentError('Voto no válido.');
+    }
+    final result = await db.rpc(
+      'set_opportunity_vote',
+      params: {
+        'p_opportunity_id': opportunityId,
+        'p_value': value,
+      },
     );
+    if (result is int) return result;
+    return int.tryParse(result?.toString() ?? '') ?? 0;
+  }
+
+  @override
+  Future<Map<String, int>> voteStates(
+    Iterable<String> opportunityIds,
+  ) async {
+    if (db.auth.currentUser == null) return <String, int>{};
+    final ids = opportunityIds.toSet().toList(growable: false);
+    if (ids.isEmpty) return <String, int>{};
+
+    final rows = await db
+        .from('opportunity_votes')
+        .select('opportunity_id,value')
+        .inFilter('opportunity_id', ids);
+
+    return <String, int>{
+      for (final raw in rows as List<dynamic>)
+        if (raw is Map &&
+            raw['opportunity_id'] != null &&
+            (raw['value'] == 1 || raw['value'] == -1))
+          raw['opportunity_id'].toString(): raw['value'] as int,
+    };
   }
 
   @override

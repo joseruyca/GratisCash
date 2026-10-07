@@ -23,9 +23,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<_HomeData> _load() async {
     final items = await Services.repo.listOpportunities(category: _category);
     final saved = await Services.repo.savedIds();
+    final voteStates = await Services.repo.voteStates(items.map((item) => item.id));
 
     if (_sort == 'Más votados') {
-      items.sort((a, b) => b.upvotes.compareTo(a.upvotes));
+      items.sort((a, b) => b.voteScore.compareTo(a.voteScore));
     } else if (_sort == 'Nuevos') {
       items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } else if (_sort == 'Terminan pronto') {
@@ -36,8 +37,8 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } else if (_sort == 'Subiendo') {
       items.sort((a, b) {
-        final scoreA = a.upvotes * 3 + a.comments;
-        final scoreB = b.upvotes * 3 + b.comments;
+        final scoreA = a.voteScore * 3 + a.comments;
+        final scoreB = b.voteScore * 3 + b.comments;
         final byScore = scoreB.compareTo(scoreA);
         return byScore != 0 ? byScore : b.createdAt.compareTo(a.createdAt);
       });
@@ -55,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return _HomeData(
       items: items,
       savedIds: saved,
+      voteStates: voteStates,
       activeCount: all.where((item) => !item.isExpired).length,
       expiredCount: expiredCount,
     );
@@ -64,23 +66,25 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _refreshKey++);
   }
 
-  Future<void> _vote(String id) async {
-    final allowed = await ensureSignedIn(
+  Future<void> _vote(String id, int value) async {
+    final allowed = await ensureCommunityAccess(
       context,
-      message: 'Inicia sesión para votar oportunidades.',
+      message: 'Inicia sesión para valorar oportunidades.',
     );
     if (!allowed || !mounted) {
       return;
     }
     try {
-      await Services.repo.toggleVote(id);
+      await Services.repo.setVote(id, value);
       _refresh();
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
+      final raw = error.toString().toLowerCase();
+      final message = raw.contains('authors cannot vote')
+          ? 'No puedes valorar una oportunidad que has publicado tú.'
+          : publicErrorMessage(error);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(publicErrorMessage(error))),
+        SnackBar(content: Text(message)),
       );
     }
   }
@@ -168,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const _HomeData(
                 items: <Opportunity>[],
                 savedIds: <String>{},
+                voteStates: <String, int>{},
                 activeCount: 0,
                 expiredCount: 0,
               );
@@ -230,7 +235,7 @@ class _Feed extends StatelessWidget {
   final ValueChanged<OpportunityCategory?> onCategory;
   final ValueChanged<String> onSort;
   final Future<void> Function() onRefresh;
-  final Future<void> Function(String id) onVote;
+  final Future<void> Function(String id, int value) onVote;
   final Future<void> Function(String id) onSave;
 
   @override
@@ -297,7 +302,8 @@ class _Feed extends StatelessWidget {
                     item: item,
                     saved: data.savedIds.contains(item.id),
                     onTap: () => context.go('/opportunity/${item.id}'),
-                    onVote: () => onVote(item.id),
+                    userVote: data.voteStates[item.id] ?? 0,
+                    onVote: (value) => onVote(item.id, value),
                     onSave: () => onSave(item.id),
                   );
                 },
@@ -637,12 +643,14 @@ class _HomeData {
   const _HomeData({
     required this.items,
     required this.savedIds,
+    required this.voteStates,
     required this.activeCount,
     required this.expiredCount,
   });
 
   final List<Opportunity> items;
   final Set<String> savedIds;
+  final Map<String, int> voteStates;
   final int activeCount;
   final int expiredCount;
 }

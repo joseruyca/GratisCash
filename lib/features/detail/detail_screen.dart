@@ -37,12 +37,23 @@ class _DetailScreenState extends State<DetailScreen> {
   Future<_DetailData> _load() async {
     final item = await Services.repo.getOpportunity(widget.id);
     if (item == null) {
-      return const _DetailData(item: null, comments: [], saved: false);
+      return const _DetailData(
+        item: null,
+        comments: [],
+        saved: false,
+        userVote: 0,
+      );
     }
     final comments = await Services.repo.comments(widget.id);
     final saved = (await Services.repo.savedIds()).contains(widget.id);
+    final votes = await Services.repo.voteStates([widget.id]);
     _saved = saved;
-    return _DetailData(item: item, comments: comments, saved: saved);
+    return _DetailData(
+      item: item,
+      comments: comments,
+      saved: saved,
+      userVote: votes[widget.id] ?? 0,
+    );
   }
 
   void _refresh() => setState(() => _refreshKey++);
@@ -78,23 +89,24 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
-  Future<void> _vote(Opportunity item) async {
-    final allowed = await ensureSignedIn(
+  Future<void> _vote(Opportunity item, int value) async {
+    final allowed = await ensureCommunityAccess(
       context,
-      message: 'Inicia sesión para votar oportunidades.',
+      message: 'Inicia sesión para valorar oportunidades.',
     );
-    if (!allowed || !mounted) {
-      return;
-    }
+    if (!allowed || !mounted) return;
+
     try {
-      await Services.repo.toggleVote(item.id);
+      await Services.repo.setVote(item.id, value);
       _refresh();
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
+      final raw = error.toString().toLowerCase();
+      final message = raw.contains('authors cannot vote')
+          ? 'No puedes valorar una oportunidad que has publicado tú.'
+          : publicErrorMessage(error);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(publicErrorMessage(error))),
+        SnackBar(content: Text(message)),
       );
     }
   }
@@ -473,7 +485,8 @@ class _DetailScreenState extends State<DetailScreen> {
                 commentController: _commentController,
                 onOpen: () => _openOpportunity(item),
                 onOpenSource: () => _openSource(item),
-                onVote: () => _vote(item),
+                userVote: data.userVote,
+                onVote: (value) => _vote(item, value),
                 onSave: () => _save(item),
                 onComment: () => _sendComment(item),
                 onReport: () => _report(item),
@@ -521,6 +534,7 @@ class _DetailContent extends StatelessWidget {
     required this.commentController,
     required this.onOpen,
     required this.onOpenSource,
+    required this.userVote,
     required this.onVote,
     required this.onSave,
     required this.onComment,
@@ -536,7 +550,8 @@ class _DetailContent extends StatelessWidget {
   final TextEditingController commentController;
   final VoidCallback onOpen;
   final VoidCallback onOpenSource;
-  final VoidCallback onVote;
+  final int userVote;
+  final void Function(int value) onVote;
   final VoidCallback onSave;
   final VoidCallback onComment;
   final VoidCallback onReport;
@@ -570,7 +585,11 @@ class _DetailContent extends StatelessWidget {
                           borderRadius: 17,
                         ),
                         const SizedBox(height: 15),
-                        _HeroText(item: item, onVote: onVote),
+                        _HeroText(
+                          item: item,
+                          userVote: userVote,
+                          onVote: onVote,
+                        ),
                       ],
                     );
                   }
@@ -584,7 +603,13 @@ class _DetailContent extends StatelessWidget {
                         borderRadius: 17,
                       ),
                       const SizedBox(width: 18),
-                      Expanded(child: _HeroText(item: item, onVote: onVote)),
+                      Expanded(
+                        child: _HeroText(
+                          item: item,
+                          userVote: userVote,
+                          onVote: onVote,
+                        ),
+                      ),
                     ],
                   );
                 },
@@ -859,10 +884,15 @@ class _DetailContent extends StatelessWidget {
 }
 
 class _HeroText extends StatelessWidget {
-  const _HeroText({required this.item, required this.onVote});
+  const _HeroText({
+    required this.item,
+    required this.userVote,
+    required this.onVote,
+  });
 
   final Opportunity item;
-  final VoidCallback onVote;
+  final int userVote;
+  final void Function(int value) onVote;
 
   @override
   Widget build(BuildContext context) {
@@ -872,34 +902,11 @@ class _HeroText extends StatelessWidget {
       children: [
         Row(
           children: [
-            Material(
-              color: expired ? const Color(0xFFF0F2F4) : const Color(0xFFE4F7EF),
-              borderRadius: BorderRadius.circular(999),
-              child: InkWell(
-                onTap: expired ? null : onVote,
-                borderRadius: BorderRadius.circular(999),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.arrow_upward_rounded,
-                        size: 16,
-                        color: expired ? GratisCashTheme.muted : GratisCashTheme.greenDark,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        item.upvotes == 0 ? 'Nuevo' : '${item.upvotes}',
-                        style: TextStyle(
-                          color: expired ? GratisCashTheme.muted : GratisCashTheme.greenDark,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            OpportunityVoteControl(
+              score: item.voteScore,
+              userVote: userVote,
+              onVote: onVote,
+              disabled: expired,
             ),
             const Spacer(),
             StatusPill(
@@ -1237,11 +1244,13 @@ class _DetailData {
     required this.item,
     required this.comments,
     required this.saved,
+    required this.userVote,
   });
 
   final Opportunity? item;
   final List<AppComment> comments;
   final bool saved;
+  final int userVote;
 }
 
 class _ReportDraft {

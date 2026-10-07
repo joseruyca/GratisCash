@@ -61,3 +61,15 @@ Usuarios no suben imágenes en V6. Esto reduce malware, contenido ilegal, stripp
 - Plan de incidentes y rotación de claves.
 - Revisión de dependencias y advisories.
 - App Links/Universal Links cerrados al dominio real.
+
+
+## Votación de oportunidades
+
+- Un usuario autenticado solo puede mantener un voto por oportunidad.
+- El valor permitido es exclusivamente +1 o -1.
+- Pulsar de nuevo el mismo voto lo elimina; cambiar de sentido sustituye el anterior.
+- El autor de una oportunidad no puede votarse a sí mismo.
+- Solo se puede votar contenido activo y no caducado.
+- La identidad de los votantes no forma parte de la API pública.
+- El cliente solo tiene SELECT sobre sus propias filas de voto; INSERT/UPDATE/DELETE se realizan mediante una RPC validada.
+- La puntuación pública es agregada y nunca revela quién ha votado.
