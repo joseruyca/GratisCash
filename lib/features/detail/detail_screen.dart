@@ -901,14 +901,31 @@ class _HeroText extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            OpportunityVoteControl(
-              score: item.voteScore,
-              userVote: userVote,
-              onVote: onVote,
-              disabled: expired,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '¿Merece la pena?',
+                    style: TextStyle(
+                      color: GratisCashTheme.muted,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  OpportunityVoteControl(
+                    score: item.voteScore,
+                    userVote: userVote,
+                    onVote: onVote,
+                    disabled: expired,
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
+            const SizedBox(width: 12),
             StatusPill(
               expired ? 'Terminada' : 'Activa',
               active: !expired,

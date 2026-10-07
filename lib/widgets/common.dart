@@ -678,15 +678,31 @@ class OpportunityVoteControl extends StatelessWidget {
       label: 'Valoración de la comunidad: $score',
       child: Container(
         decoration: BoxDecoration(
-          color: disabled ? const Color(0xFFF2F4F5) : Colors.white,
+          color: disabled ? const Color(0xFFF2F4F5) : const Color(0xFFF9FBFB),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: GratisCashTheme.border),
+          border: Border.all(
+            color: userVote == 1
+                ? const Color(0xFFBFE8D7)
+                : userVote == -1
+                    ? const Color(0xFFF5C7CE)
+                    : GratisCashTheme.border,
+          ),
+          boxShadow: disabled
+              ? null
+              : const [
+                  BoxShadow(
+                    color: Color(0x09000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             _VoteAction(
               tooltip: userVote == 1 ? 'Quitar voto positivo' : 'Me parece buena',
+              baseColor: GratisCashTheme.greenDark,
               icon: userVote == 1
                   ? Icons.thumb_up_alt_rounded
                   : Icons.thumb_up_alt_outlined,
@@ -702,13 +718,14 @@ class OpportunityVoteControl extends StatelessWidget {
                 score > 0 ? '+$score' : '$score',
                 style: TextStyle(
                   color: scoreColor,
-                  fontSize: compact ? 11.5 : 13,
+                  fontSize: compact ? 12.5 : 15,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             _VoteAction(
               tooltip: userVote == -1 ? 'Quitar voto negativo' : 'No me convence',
+              baseColor: GratisCashTheme.coral,
               icon: userVote == -1
                   ? Icons.thumb_down_alt_rounded
                   : Icons.thumb_down_alt_outlined,
@@ -730,6 +747,7 @@ class _VoteAction extends StatelessWidget {
     required this.icon,
     required this.selected,
     required this.selectedColor,
+    required this.baseColor,
     required this.onTap,
     required this.compact,
   });
@@ -738,6 +756,7 @@ class _VoteAction extends StatelessWidget {
   final IconData icon;
   final bool selected;
   final Color selectedColor;
+  final Color baseColor;
   final VoidCallback? onTap;
   final bool compact;
 
@@ -750,17 +769,17 @@ class _VoteAction extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: compact ? 7 : 9,
-            vertical: compact ? 5 : 7,
+            horizontal: compact ? 9 : 11,
+            vertical: compact ? 7 : 9,
           ),
           child: Icon(
             icon,
-            size: compact ? 16 : 18,
+            size: compact ? 18 : 21,
             color: onTap == null
                 ? const Color(0xFFB2BBC3)
                 : selected
                     ? selectedColor
-                    : GratisCashTheme.muted,
+                    : baseColor,
           ),
         ),
       ),
