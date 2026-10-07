@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -28,9 +30,34 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _showPassword = false;
   bool _showConfirmPassword = false;
   bool _busy = false;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final auth = Supabase.instance.client.auth;
+    _authSubscription = auth.onAuthStateChange.listen((state) {
+      if (!mounted || state.session == null) return;
+      if (state.event == AuthChangeEvent.signedIn ||
+          state.event == AuthChangeEvent.tokenRefreshed ||
+          state.event == AuthChangeEvent.initialSession) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _finishAuth();
+        });
+      }
+    });
+
+    if (auth.currentSession != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _finishAuth();
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _displayName.dispose();
     _email.dispose();
     _password.dispose();
@@ -109,8 +136,8 @@ class _AuthScreenState extends State<AuthScreen> {
           data: {
             'display_name': _displayName.text.trim(),
             'terms_version': AppConfig.termsVersion,
-            'terms_accepted_at': DateTime.now().toUtc().toIso8601String(),
-            'adult_confirmed_at': DateTime.now().toUtc().toIso8601String(),
+            'terms_accepted': true,
+            'adult_confirmed': true,
           },
           emailRedirectTo: AppConfig.authRedirectUrl,
         );
@@ -146,6 +173,23 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) {
         setState(() => _busy = false);
       }
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: AppConfig.authRedirectUrl,
+      );
+    } on AuthException catch (error) {
+      _showMessage(_friendlyAuthError(error.message));
+    } catch (_) {
+      _showMessage('No hemos podido abrir el acceso con Google.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -391,6 +435,7 @@ class _AuthForm extends StatelessWidget {
     required this.passwordValidator,
     required this.confirmValidator,
     required this.onSubmit,
+    required this.onGoogle,
     required this.onReset,
     required this.onResendConfirmation,
     required this.onTermsChanged,
@@ -416,6 +461,7 @@ class _AuthForm extends StatelessWidget {
   final String? Function(String?) passwordValidator;
   final String? Function(String?) confirmValidator;
   final VoidCallback onSubmit;
+  final VoidCallback onGoogle;
   final VoidCallback onReset;
   final VoidCallback onResendConfirmation;
   final ValueChanged<bool> onTermsChanged;
@@ -490,6 +536,39 @@ class _AuthForm extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
+          if (AppConfig.googleAuthEnabled) ...[
+            OutlinedButton.icon(
+              onPressed: busy ? null : onGoogle,
+              icon: const _GoogleMark(),
+              label: Text(
+                register ? 'Registrarme con Google' : 'Continuar con Google',
+              ),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: GratisCashTheme.dark,
+                minimumSize: const Size.fromHeight(50),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Row(
+              children: [
+                Expanded(child: Divider()),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'o con email',
+                    style: TextStyle(
+                      color: GratisCashTheme.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ],
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
             child: register
@@ -806,6 +885,34 @@ class _AuthBenefit extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      height: 20,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: const Color(0xFFDADCE0)),
+      ),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: Color(0xFF4285F4),
+          fontSize: 14,
+          height: 1,
+        ),
       ),
     );
   }

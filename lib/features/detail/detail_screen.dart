@@ -55,11 +55,23 @@ class _DetailScreenState extends State<DetailScreen> {
       return;
     }
     try {
+      await Services.repo.registerOutboundClick(item.id);
       await launchExternal(item.outboundUrl);
     } catch (error) {
       if (!mounted) {
         return;
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(publicErrorMessage(error))),
+      );
+    }
+  }
+
+  Future<void> _openSource(Opportunity item) async {
+    try {
+      await launchExternal(item.sourceUrl);
+    } catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(publicErrorMessage(error))),
       );
@@ -460,6 +472,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 comments: data!.comments,
                 commentController: _commentController,
                 onOpen: () => _openOpportunity(item),
+                onOpenSource: () => _openSource(item),
                 onVote: () => _vote(item),
                 onSave: () => _save(item),
                 onComment: () => _sendComment(item),
@@ -507,6 +520,7 @@ class _DetailContent extends StatelessWidget {
     required this.comments,
     required this.commentController,
     required this.onOpen,
+    required this.onOpenSource,
     required this.onVote,
     required this.onSave,
     required this.onComment,
@@ -521,6 +535,7 @@ class _DetailContent extends StatelessWidget {
   final List<AppComment> comments;
   final TextEditingController commentController;
   final VoidCallback onOpen;
+  final VoidCallback onOpenSource;
   final VoidCallback onVote;
   final VoidCallback onSave;
   final VoidCallback onComment;
@@ -592,6 +607,52 @@ class _DetailContent extends StatelessWidget {
                   ),
                 ],
               ),
+              if (item.isAffiliate && !expired) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8FA),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: GratisCashTheme.border),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: GratisCashTheme.muted,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Este botón puede usar un enlace de afiliación. GratisCash puede recibir una comisión sin coste adicional para ti.',
+                          style: TextStyle(
+                            color: GratisCashTheme.muted,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      TextButton(
+                        onPressed: () => context.push('/legal/affiliate'),
+                        child: const Text('Info'),
+                      ),
+                    ],
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: onOpenSource,
+                    icon: const Icon(Icons.source_outlined, size: 18),
+                    label: const Text('Abrir fuente oficial'),
+                  ),
+                ),
+              ],
               if (item.photoCredit != null) ...[
                 const SizedBox(height: 8),
                 Wrap(
@@ -848,6 +909,37 @@ class _HeroText extends StatelessWidget {
             ),
           ],
         ),
+        if (item.isSponsored && !expired) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3D9),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.campaign_outlined,
+                  size: 14,
+                  color: GratisCashTheme.amber,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  item.sponsorName?.trim().isNotEmpty == true
+                      ? 'Patrocinada por ${item.sponsorName}'
+                      : 'Contenido patrocinado',
+                  style: const TextStyle(
+                    color: GratisCashTheme.amber,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 13),
         Text(
           item.title,
@@ -873,10 +965,6 @@ class _HeroText extends StatelessWidget {
                 ),
               ),
             ),
-            if (item.isVerified) ...[
-              const SizedBox(width: 5),
-              const Icon(Icons.verified_rounded, size: 17, color: GratisCashTheme.green),
-            ],
           ],
         ),
         const SizedBox(height: 13),
@@ -890,7 +978,7 @@ class _HeroText extends StatelessWidget {
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w900,
-                color: expired ? Colors.grey : GratisCashTheme.green,
+                color: expired ? Colors.grey : categoryAccent(item.category),
                 letterSpacing: -0.8,
               ),
             ),
@@ -1068,24 +1156,20 @@ class _DetailAside extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.verified_user_outlined, color: GratisCashTheme.green),
+                  Icon(Icons.info_outline_rounded, color: GratisCashTheme.blue),
                   SizedBox(width: 8),
                   Text(
-                    'Comprobación GratisCash',
+                    'Antes de participar',
                     style: TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ],
               ),
               const SizedBox(height: 13),
-              _CheckLine(
-                text: item.isVerified ? 'Fuente revisada' : 'Pendiente de verificación',
-                ok: item.isVerified,
-              ),
-              const _CheckLine(text: 'Enlace HTTPS', ok: true),
-              const _CheckLine(text: 'Fuente visible', ok: true),
+              const _CheckLine(text: 'Revisa requisitos y fecha límite', ok: true),
+              const _CheckLine(text: 'Consulta la fuente oficial', ok: true),
               const SizedBox(height: 12),
               const Text(
-                'GratisCash resume información pública. Las condiciones definitivas siempre son las de la fuente oficial.',
+                'GratisCash resume la oportunidad para que sea fácil de entender. Las condiciones definitivas son siempre las publicadas por la fuente oficial.',
                 style: TextStyle(color: GratisCashTheme.muted, fontSize: 12, height: 1.4),
               ),
             ],

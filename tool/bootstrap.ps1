@@ -71,11 +71,46 @@ if (Test-Path (Join-Path $customWeb "robots.txt")) {
 # GratisCash Web es una web responsive del producto, no una PWA instalable.
 Remove-Item "web\manifest.json" -Force -ErrorAction SilentlyContinue
 
+$androidKts = "android\app\build.gradle.kts"
+if (Test-Path $androidKts) {
+    $content = Get-Content $androidKts -Raw
+    $content = $content -replace 'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24'
+    Set-Content $androidKts $content -Encoding UTF8
+}
+
+$androidGroovy = "android\app\build.gradle"
+if (Test-Path $androidGroovy) {
+    $content = Get-Content $androidGroovy -Raw
+    $content = $content -replace 'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 24'
+    Set-Content $androidGroovy $content -Encoding UTF8
+}
+
+$podfile = "ios\Podfile"
+if (Test-Path $podfile) {
+    $content = Get-Content $podfile -Raw
+    $content = $content -replace '#?\s*platform\s*:ios,\s*[''"]\d+(?:\.\d+)?[''"]', "platform :ios, '13.0'"
+    Set-Content $podfile $content -Encoding UTF8
+}
+
 $manifest = "android\app\src\main\AndroidManifest.xml"
 if (Test-Path $manifest) {
     $content = Get-Content $manifest -Raw
     $content = $content -replace 'android:label="gratiscash"', 'android:label="GratisCash"'
     Set-Content $manifest $content -Encoding UTF8
+}
+
+$plist = "ios\Runner\Info.plist"
+if (Test-Path $plist) {
+    $content = Get-Content $plist -Raw
+    $content = $content -replace '<string>gratiscash</string>', '<string>GratisCash</string>'
+    if ($content -notmatch 'NSPhotoLibraryUsageDescription') {
+        $permission = @"
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>GratisCash necesita acceso a tu fototeca únicamente cuando eliges una imagen para una oportunidad o tu perfil.</string>
+"@
+        $content = $content -replace '</dict>\s*</plist>', ($permission + "</dict>`r`n</plist>")
+    }
+    Set-Content $plist $content -Encoding UTF8
 }
 
 flutter pub get

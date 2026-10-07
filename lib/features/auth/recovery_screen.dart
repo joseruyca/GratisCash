@@ -77,6 +77,25 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasRecoverySession =
+        Supabase.instance.client.auth.currentSession != null;
+
+    if (!hasRecoverySession) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: EmptyState(
+          icon: Icons.link_off_rounded,
+          title: 'Enlace no válido',
+          body:
+              'Este enlace de recuperación ha caducado o ya no contiene una sesión válida. Solicita uno nuevo desde el acceso.',
+          action: FilledButton(
+            onPressed: () => context.go('/auth'),
+            child: const Text('Volver al acceso'),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(),
       body: Center(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/app_error.dart';
 import '../../core/config.dart';
 import '../../core/services.dart';
 import '../../core/theme.dart';
@@ -58,11 +60,27 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     setState(() => _busy = true);
     try {
       await Services.repo.deleteMyAccount();
+      try {
+        await Supabase.instance.client.auth.signOut(
+          scope: SignOutScope.local,
+        );
+      } catch (_) {
+        // La cuenta ya se ha eliminado en servidor. La navegación reinicia
+        // el flujo aunque el token local hubiese quedado invalidado antes.
+      }
       if (mounted) context.go('/');
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo eliminar la cuenta: $error')),
+          SnackBar(
+            content: Text(
+              publicErrorMessage(
+                error,
+                fallback:
+                    'No hemos podido eliminar la cuenta. Inténtalo de nuevo en unos minutos.',
+              ),
+            ),
+          ),
         );
       }
     } finally {

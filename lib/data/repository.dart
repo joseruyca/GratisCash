@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config.dart';
@@ -15,12 +17,17 @@ abstract class GratisCashRepository {
   Future<void> addComment(String opportunityId, String body);
   Future<void> toggleVote(String opportunityId);
   Future<void> toggleSaved(String opportunityId);
+  Future<void> registerOutboundClick(String opportunityId);
   Future<Set<String>> savedIds();
   Future<List<Opportunity>> savedOpportunities();
   Future<UserProfile?> currentProfile();
   Future<void> updateMyProfile({
     required String displayName,
     required String username,
+  });
+  Future<String> uploadMyAvatar({
+    required Uint8List bytes,
+    required String contentType,
   });
   Future<void> acceptCommunityTerms();
   Future<List<Opportunity>> mySubmissions();
@@ -30,7 +37,13 @@ abstract class GratisCashRepository {
     required String title,
     required String sourceName,
   });
-  Future<void> submitOpportunity(Map<String, dynamic> draft);
+  Future<String> submitOpportunity(Map<String, dynamic> draft);
+  Future<void> attachSubmissionImage({
+    required String opportunityId,
+    required Uint8List bytes,
+    required String extension,
+    required String contentType,
+  });
   Future<void> appealModeration(String opportunityId, String message);
   Future<void> report({
     required String targetType,
@@ -43,6 +56,7 @@ abstract class GratisCashRepository {
   Future<List<Opportunity>> adminPublished();
   Future<List<Map<String, dynamic>>> reportsForAdmin();
   Future<List<Map<String, dynamic>>> usersForAdmin();
+  Future<List<Map<String, dynamic>>> opportunityMetricsForAdmin();
   Future<List<ModerationAppeal>> appealsForAdmin();
   Future<void> moderate(
     String id,
@@ -55,6 +69,10 @@ abstract class GratisCashRepository {
     required String id,
     required bool suspended,
     required String reason,
+  });
+  Future<void> setUserRole({
+    required String id,
+    required String role,
   });
   Future<void> resolveAppeal({
     required String id,
@@ -75,6 +93,34 @@ class SupabaseRepository implements GratisCashRepository {
       throw StateError('Debes iniciar sesión.');
     }
     return id;
+  }
+
+  Opportunity _opportunityFromMap(Map<String, dynamic> source) {
+    final row = Map<String, dynamic>.from(source);
+    final explicitUrl = (row['image_url'] ?? '').toString().trim();
+    final storagePath = (row['image_path'] ?? '').toString().trim();
+
+    if (explicitUrl.isEmpty && storagePath.isNotEmpty) {
+      row['image_url'] = db.storage
+          .from('opportunity-images')
+          .getPublicUrl(storagePath);
+    }
+
+    return Opportunity.fromMap(row);
+  }
+
+  UserProfile _profileFromMap(Map<String, dynamic> source) {
+    final row = Map<String, dynamic>.from(source);
+    final explicitUrl = (row['avatar_url'] ?? '').toString().trim();
+    final storagePath = (row['avatar_path'] ?? '').toString().trim();
+
+    if (explicitUrl.isEmpty && storagePath.isNotEmpty) {
+      row['avatar_url'] = db.storage
+          .from('avatars')
+          .getPublicUrl(storagePath);
+    }
+
+    return UserProfile.fromMap(row);
   }
 
   @override
@@ -111,7 +157,7 @@ class SupabaseRepository implements GratisCashRepository {
         .limit(100);
     return (rows as List<dynamic>)
         .map(
-          (row) => Opportunity.fromMap(
+          (row) => _opportunityFromMap(
             Map<String, dynamic>.from(row as Map),
           ),
         )
@@ -128,7 +174,7 @@ class SupabaseRepository implements GratisCashRepository {
     if (row == null) {
       return null;
     }
-    return Opportunity.fromMap(Map<String, dynamic>.from(row));
+    return _opportunityFromMap(Map<String, dynamic>.from(row));
   }
 
   @override
@@ -178,6 +224,18 @@ class SupabaseRepository implements GratisCashRepository {
   }
 
   @override
+  Future<void> registerOutboundClick(String opportunityId) async {
+    try {
+      await db.rpc(
+        'register_outbound_click',
+        params: {'p_opportunity_id': opportunityId},
+      );
+    } catch (_) {
+      // Analytics are deliberately best-effort and never block the user.
+    }
+  }
+
+  @override
   Future<Set<String>> savedIds() async {
     if (db.auth.currentUser == null) {
       return <String>{};
@@ -203,7 +261,7 @@ class SupabaseRepository implements GratisCashRepository {
         .order('created_at', ascending: false);
     return (rows as List<dynamic>)
         .map(
-          (row) => Opportunity.fromMap(
+          (row) => _opportunityFromMap(
             Map<String, dynamic>.from(row as Map),
           ),
         )
@@ -219,7 +277,7 @@ class SupabaseRepository implements GratisCashRepository {
     if (row == null) {
       return null;
     }
-    return UserProfile.fromMap(Map<String, dynamic>.from(row));
+    return _profileFromMap(Map<String, dynamic>.from(row));
   }
 
   @override
@@ -256,15 +314,51 @@ class SupabaseRepository implements GratisCashRepository {
     }).eq('id', _uid);
   }
 
+
+  @override
+  Future<String> uploadMyAvatar({
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    if (bytes.isEmpty || bytes.lengthInBytes > 5 * 1024 * 1024) {
+      throw ArgumentError('La imagen de perfil debe pesar menos de 5 MB.');
+    }
+
+    const allowedTypes = <String>{'image/jpeg', 'image/png', 'image/webp'};
+    if (!allowedTypes.contains(contentType)) {
+      throw ArgumentError('Formato de avatar no admitido.');
+    }
+
+    final bucket = db.storage.from('avatars');
+    final path = '$_uid/avatar';
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+
+    await bucket.uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(
+        contentType: contentType,
+        upsert: true,
+        cacheControl: '3600',
+      ),
+    );
+
+    try {
+      await db.rpc(
+        'set_my_avatar_path',
+        params: {'p_storage_path': path},
+      );
+    } catch (_) {
+      rethrow;
+    }
+
+    final publicUrl = bucket.getPublicUrl(path);
+    return '$publicUrl?v=$stamp';
+  }
+
   @override
   Future<void> acceptCommunityTerms() async {
-    final now = DateTime.now().toUtc().toIso8601String();
-    await db.from('profiles').update({
-      'terms_version': AppConfig.termsVersion,
-      'terms_accepted_at': now,
-      'adult_confirmed_at': now,
-      'updated_at': now,
-    }).eq('id', _uid);
+    await db.rpc('accept_current_terms');
   }
 
   @override
@@ -280,7 +374,7 @@ class SupabaseRepository implements GratisCashRepository {
         .limit(100);
     return (rows as List<dynamic>)
         .map(
-          (row) => Opportunity.fromMap(
+          (row) => _opportunityFromMap(
             Map<String, dynamic>.from(row as Map),
           ),
         )
@@ -317,19 +411,72 @@ class SupabaseRepository implements GratisCashRepository {
   }
 
   @override
-  Future<void> submitOpportunity(Map<String, dynamic> draft) async {
-    await db.from('opportunities').insert({
+  Future<String> submitOpportunity(Map<String, dynamic> draft) async {
+    final row = await db.from('opportunities').insert({
       ...draft,
       'author_id': _uid,
       'status': 'pending',
       'is_verified': false,
       'affiliate_url': null,
       'is_featured': false,
+      'image_url': null,
+      'image_path': null,
       'photo_credit': null,
       'photo_source_url': null,
       'moderation_reason': null,
       'duplicate_of': null,
-    });
+    }).select('id').single();
+
+    return row['id'].toString();
+  }
+
+  @override
+  Future<void> attachSubmissionImage({
+    required String opportunityId,
+    required Uint8List bytes,
+    required String extension,
+    required String contentType,
+  }) async {
+    if (bytes.isEmpty || bytes.lengthInBytes > 8 * 1024 * 1024) {
+      throw ArgumentError('La imagen debe pesar menos de 8 MB.');
+    }
+
+    final normalized = extension.toLowerCase() == 'jpeg'
+        ? 'jpg'
+        : extension.toLowerCase();
+    const allowedExtensions = <String>{'jpg', 'png', 'webp'};
+    const allowedTypes = <String>{'image/jpeg', 'image/png', 'image/webp'};
+
+    if (!allowedExtensions.contains(normalized) ||
+        !allowedTypes.contains(contentType)) {
+      throw ArgumentError('Formato de imagen no admitido.');
+    }
+
+    final path = '$_uid/$opportunityId/image.$normalized';
+    final bucket = db.storage.from('opportunity-images');
+
+    await bucket.uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(
+        contentType: contentType,
+        upsert: false,
+        cacheControl: '3600',
+      ),
+    );
+
+    try {
+      await db.rpc(
+        'attach_submission_image',
+        params: {
+          'p_opportunity_id': opportunityId,
+          'p_storage_path': path,
+        },
+      );
+    } catch (_) {
+      await bucket.remove([path]);
+      rethrow;
+    }
   }
 
   @override
@@ -380,9 +527,17 @@ class SupabaseRepository implements GratisCashRepository {
         .select()
         .eq('status', 'pending')
         .order('created_at', ascending: false);
-    return (rows as List<dynamic>)
-        .map((row) => Map<String, dynamic>.from(row as Map))
-        .toList();
+    return (rows as List<dynamic>).map((raw) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final imageUrl = (row['image_url'] ?? '').toString().trim();
+      final imagePath = (row['image_path'] ?? '').toString().trim();
+      if (imageUrl.isEmpty && imagePath.isNotEmpty) {
+        row['image_url'] = db.storage
+            .from('opportunity-images')
+            .getPublicUrl(imagePath);
+      }
+      return row;
+    }).toList();
   }
 
   @override
@@ -395,7 +550,7 @@ class SupabaseRepository implements GratisCashRepository {
         .limit(200);
     return (rows as List<dynamic>)
         .map(
-          (row) => Opportunity.fromMap(
+          (row) => _opportunityFromMap(
             Map<String, dynamic>.from(row as Map),
           ),
         )
@@ -423,6 +578,15 @@ class SupabaseRepository implements GratisCashRepository {
         .order('open_report_count', ascending: false)
         .order('created_at', ascending: false)
         .limit(200);
+    return (rows as List<dynamic>)
+        .map((row) => Map<String, dynamic>.from(row as Map))
+        .toList();
+  }
+
+
+  @override
+  Future<List<Map<String, dynamic>>> opportunityMetricsForAdmin() async {
+    final rows = await db.rpc('admin_opportunity_metrics');
     return (rows as List<dynamic>)
         .map((row) => Map<String, dynamic>.from(row as Map))
         .toList();
@@ -487,6 +651,24 @@ class SupabaseRepository implements GratisCashRepository {
         'p_user_id': id,
         'p_suspended': suspended,
         'p_reason': text,
+      },
+    );
+  }
+
+  @override
+  Future<void> setUserRole({
+    required String id,
+    required String role,
+  }) async {
+    const allowed = <String>{'user', 'moderator', 'admin'};
+    if (!allowed.contains(role)) {
+      throw ArgumentError('Rol no válido.');
+    }
+    await db.rpc(
+      'set_user_role',
+      params: {
+        'p_user_id': id,
+        'p_role': role,
       },
     );
   }

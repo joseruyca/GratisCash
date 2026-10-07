@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory=$true)][string]$WebsiteUrl,
     [Parameter(Mandatory=$true)][string]$LegalOwner,
     [Parameter(Mandatory=$true)][string]$LegalEmail,
-    [Parameter(Mandatory=$true)][string]$LegalAddress
+    [Parameter(Mandatory=$true)][string]$LegalAddress,
+    [bool]$GoogleAuthEnabled = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +19,12 @@ if ($flutterCommand) {
     throw "No encuentro Flutter. Instálalo o añádelo al PATH."
 }
 Set-Location $root
+
+$ExpectedFlutterVersion = "3.41.6"
+$flutterVersion = (& $flutter --version | Select-Object -First 1)
+if ($flutterVersion -notlike "*Flutter $ExpectedFlutterVersion*") {
+    throw "Flutter debe ser $ExpectedFlutterVersion para este release. Detectado: $flutterVersion"
+}
 
 function Assert-RealValue([string]$Name, [string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value) -or $Value.ToUpper().Contains("PENDIENTE") -or $Value.Contains("TU-PROYECTO") -or $Value.Contains("tu-dominio")) {
@@ -44,16 +51,28 @@ foreach ($token in $forbidden) {
 
 & $flutter pub get
 if ($LASTEXITCODE -ne 0) { throw "pub get falló." }
+
+$lockFile = Join-Path $root "pubspec.lock"
+if (-not (Test-Path $lockFile)) {
+    throw "pubspec.lock no existe después de pub get. Release bloqueado."
+}
+$lockStatus = (& git status --porcelain -- "pubspec.lock") -join ""
+if (-not [string]::IsNullOrWhiteSpace($lockStatus)) {
+    throw "pubspec.lock está sin commitear o desactualizado. Haz pub get y guarda el lockfile antes del release."
+}
+
 & $flutter analyze
 if ($LASTEXITCODE -ne 0) { throw "analyze falló." }
 & $flutter test
 if ($LASTEXITCODE -ne 0) { throw "tests fallaron." }
 
 $defines = @(
+    "--dart-define=APP_ENV=production",
     "--dart-define=SUPABASE_URL=$SupabaseUrl",
     "--dart-define=SUPABASE_PUBLISHABLE_KEY=$PublishableKey",
     "--dart-define=WEBSITE_URL=$WebsiteUrl",
     "--dart-define=AUTH_REDIRECT_URL=$WebsiteUrl/auth",
+    "--dart-define=GOOGLE_AUTH_ENABLED=$($GoogleAuthEnabled.ToString().ToLower())",
     "--dart-define=LEGAL_OWNER=$LegalOwner",
     "--dart-define=LEGAL_EMAIL=$LegalEmail",
     "--dart-define=LEGAL_ADDRESS=$LegalAddress"

@@ -106,9 +106,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
                   child: FilterChip(
-                    avatar: const Icon(Icons.timer_outlined, size: 17),
+                    avatar: Icon(
+                      Icons.timer_outlined,
+                      size: 17,
+                      color: _endingSoon
+                          ? GratisCashTheme.amber
+                          : GratisCashTheme.muted,
+                    ),
                     label: const Text('Terminan pronto'),
                     selected: _endingSoon,
+                    selectedColor: const Color(0xFFFFF3D9),
+                    checkmarkColor: GratisCashTheme.amber,
+                    side: BorderSide(
+                      color: _endingSoon
+                          ? const Color(0xFFF1D9A6)
+                          : GratisCashTheme.border,
+                    ),
                     onSelected: (value) {
                       setState(() {
                         _endingSoon = value;
@@ -206,11 +219,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _chip(OpportunityCategory? category, String label) {
+    final selected = _category == category;
+    final background = category == null
+        ? const Color(0xFFE6F7F0)
+        : categoryColor(category);
+    final foreground = category == null
+        ? GratisCashTheme.greenDark
+        : categoryAccent(category);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
       child: ChoiceChip(
-        label: Text(label),
-        selected: _category == category,
+        label: Text(
+          label,
+          style: TextStyle(
+            color: selected ? foreground : GratisCashTheme.dark,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+        selected: selected,
+        selectedColor: background,
+        checkmarkColor: foreground,
+        side: BorderSide(
+          color: selected
+              ? foreground.withValues(alpha: 0.24)
+              : GratisCashTheme.border,
+        ),
         onSelected: (_) {
           setState(() {
             _category = category;

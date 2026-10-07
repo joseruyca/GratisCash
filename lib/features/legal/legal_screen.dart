@@ -176,11 +176,17 @@ class LegalScreen extends StatelessWidget {
         ]);
       case 'affiliate':
         return const _LegalContent('Afiliación y publicidad', [
-          _LegalSection('Cómo puede ganar dinero GratisCash', [
-            'Algunos enlaces de salida pueden ser de afiliación. Si una acción válida genera comisión, GratisCash puede recibir una remuneración. La URL oficial y la URL de afiliación se mantienen separadas internamente.',
+          _LegalSection('Afiliación', [
+            'Algunos enlaces de salida pueden ser de afiliación. Si una acción válida genera comisión, GratisCash puede recibir una remuneración sin que ello suponga un coste adicional para el usuario. La fuente oficial y el enlace monetizado se mantienen separados.',
+          ]),
+          _LegalSection('Contenido patrocinado', [
+            'Una marca puede financiar la presencia de una oportunidad únicamente cuando exista una promoción real y útil. Esa ficha se identifica de forma visible como “Patrocinada” e indica el nombre del patrocinador mientras la campaña está activa.',
+          ]),
+          _LegalSection('Destacada no significa pagada', [
+            'La etiqueta “Destacada” responde a una decisión editorial de GratisCash. Pagar una campaña no concede por sí mismo esa etiqueta, votos, comentarios, posiciones de popularidad ni una valoración más favorable.',
           ]),
           _LegalSection('Independencia y transparencia', [
-            'La posibilidad de recibir comisión no convierte contenido engañoso en una oportunidad válida. El contenido patrocinado deberá identificarse claramente como publicidad o patrocinado antes del lanzamiento de esa modalidad.',
+            'La existencia de afiliación o patrocinio no elimina los requisitos de moderación, fuente, condiciones ni seguridad. GratisCash no debe ocultar la naturaleza comercial de una campaña.',
           ]),
         ]);
       case 'contact':

@@ -109,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final loadKey = _refreshKey;
+    final compactHeader = MediaQuery.sizeOf(context).width < 560;
 
     return Scaffold(
       appBar: AppBar(
@@ -124,19 +125,23 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => context.push('/notifications'),
             icon: const Icon(Icons.notifications_none_rounded),
           ),
-          IconButton(
-            tooltip: 'Terminadas',
-            onPressed: () => context.go('/finished'),
-            icon: const Icon(Icons.history_rounded),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: IconButton.filled(
-              tooltip: 'Publicar',
-              onPressed: () => context.go('/submit'),
-              icon: const Icon(Icons.add_rounded),
+          if (!compactHeader)
+            IconButton(
+              tooltip: 'Terminadas',
+              onPressed: () => context.go('/finished'),
+              icon: const Icon(Icons.history_rounded),
             ),
-          ),
+          if (!compactHeader)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: IconButton.filled(
+                tooltip: 'Publicar',
+                onPressed: () => context.go('/submit'),
+                icon: const Icon(Icons.add_rounded),
+              ),
+            )
+          else
+            const SizedBox(width: 6),
         ],
       ),
       body: FutureBuilder<_HomeData>(

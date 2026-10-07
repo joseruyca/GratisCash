@@ -52,6 +52,11 @@ class Opportunity {
     this.isVerified = false,
     this.isFeatured = false,
     this.affiliateUrl,
+    this.isAffiliate = false,
+    this.isSponsored = false,
+    this.sponsorName,
+    this.sponsoredFrom,
+    this.sponsoredUntil,
     this.moderationReason,
     this.duplicateOf,
     this.duplicateScore,
@@ -65,6 +70,11 @@ class Opportunity {
   final String sourceName;
   final String sourceUrl;
   final String? affiliateUrl;
+  final bool isAffiliate;
+  final bool isSponsored;
+  final String? sponsorName;
+  final DateTime? sponsoredFrom;
+  final DateTime? sponsoredUntil;
   final String rewardText;
   final OpportunityCategory category;
   final OpportunityStatus status;
@@ -145,6 +155,11 @@ class Opportunity {
       sourceName: sourceName,
       sourceUrl: sourceUrl,
       affiliateUrl: affiliateUrl,
+      isAffiliate: isAffiliate,
+      isSponsored: isSponsored,
+      sponsorName: sponsorName,
+      sponsoredFrom: sponsoredFrom,
+      sponsoredUntil: sponsoredUntil,
       rewardText: rewardText,
       category: category,
       status: status ?? this.status,
@@ -177,6 +192,11 @@ class Opportunity {
       'source_name': sourceName,
       'source_url': sourceUrl,
       'affiliate_url': affiliateUrl,
+      'is_affiliate': isAffiliate,
+      'is_sponsored': isSponsored,
+      'sponsor_name': sponsorName,
+      'sponsored_from': sponsoredFrom?.toIso8601String(),
+      'sponsored_until': sponsoredUntil?.toIso8601String(),
       'reward_text': rewardText,
       'category': category.name,
       'status': status.name,
@@ -214,6 +234,11 @@ class Opportunity {
       sourceName: (map['source_name'] ?? '').toString(),
       sourceUrl: (map['source_url'] ?? '').toString(),
       affiliateUrl: (map['outbound_url'] ?? map['affiliate_url'])?.toString(),
+      isAffiliate: map['is_affiliate'] == true,
+      isSponsored: map['is_sponsored'] == true,
+      sponsorName: map['sponsor_name']?.toString(),
+      sponsoredFrom: _dateOrNull(map['sponsored_from']),
+      sponsoredUntil: _dateOrNull(map['sponsored_until']),
       rewardText: (map['reward_text'] ?? '').toString(),
       category: OpportunityCategoryX.parse(
         (map['category'] ?? 'money').toString(),

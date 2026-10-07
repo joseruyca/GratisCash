@@ -68,3 +68,31 @@
 - [ ] Contacto de moderación publicado.
 - [ ] Funciones UGC de filtrar/denunciar/bloquear demostrables durante review.
 - [ ] Eliminación de cuenta accesible dentro de app.
+
+
+## V9 · medios y afiliación
+
+- [ ] Ejecutar `flutter pub get`, `flutter analyze` y `flutter test` con Flutter 3.41.6 / Dart 3.11.x.
+- [ ] Generar Android/iOS/web con `tool/bootstrap.ps1`.
+- [ ] Confirmar Android minSdk 24+ e iOS 13+.
+- [ ] Probar selección/subida de JPG, PNG y WebP en Publicar.
+- [ ] Probar avatar nuevo y sustitución de avatar existente.
+- [ ] Comprobar que un usuario no puede asociar imágenes de otro usuario.
+- [ ] Comprobar moderación de una propuesta con imagen antes de publicarla.
+- [ ] Comprobar aviso de afiliación y enlace separado a la fuente oficial cuando exista affiliate_url.
+- [ ] Verificar alta, confirmación de email, login y recuperación de contraseña con las URLs reales de Supabase Auth.
+- [ ] Completar LEGAL_OWNER, LEGAL_EMAIL y LEGAL_ADDRESS antes de cambiar APP_ENV a production.
+- [ ] Confirmar que solo el proyecto Vercel definitivo está conectado al repositorio antes de publicar main.
+
+
+## V10 · monetización y acceso
+
+- [ ] Configurar Google como proveedor OAuth en Supabase Auth.
+- [ ] Crear credenciales OAuth web, Android e iOS con el branding real de GratisCash.
+- [ ] Añadir las redirect URLs definitivas de producción y probar el retorno de sesión.
+- [ ] Confirmar que una oportunidad patrocinada muestra siempre la etiqueta "Patrocinada".
+- [ ] Confirmar que "Destacada" sigue siendo una decisión editorial, no un producto de pago.
+- [ ] Probar inicio/fin de campaña patrocinada.
+- [ ] Revisar métricas internas de clics de salida; no usarlas como métrica contractual de facturación.
+- [ ] Confirmar que las métricas no almacenan IP, email ni identidad del visitante.
+- [ ] Revisar texto legal de afiliación/patrocinios antes de vender la primera campaña.

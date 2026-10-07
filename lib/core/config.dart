@@ -27,6 +27,10 @@ class AppConfig {
     'AUTH_REDIRECT_URL',
     defaultValue: 'https://gratiscashv1.vercel.app/auth',
   );
+  static const googleAuthEnabled = bool.fromEnvironment(
+    'GOOGLE_AUTH_ENABLED',
+    defaultValue: false,
+  );
 
   static const termsVersion = '2026-10-06';
   static const minimumAccountAge = 18;

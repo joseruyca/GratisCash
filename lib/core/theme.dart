@@ -8,6 +8,14 @@ class GratisCashTheme {
   static const soft = Color(0xFFF5F7F8);
   static const border = Color(0xFFE5E9ED);
 
+  // Secondary palette: brand green stays reserved for navigation and primary
+  // actions; opportunity categories get their own restrained accent.
+  static const blue = Color(0xFF3568E8);
+  static const coral = Color(0xFFE75F6F);
+  static const amber = Color(0xFFE39718);
+  static const violet = Color(0xFF7657D6);
+  static const teal = Color(0xFF168C86);
+
   static ThemeData get light {
     final scheme = ColorScheme.fromSeed(
       seedColor: green,

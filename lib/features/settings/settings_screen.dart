@@ -166,7 +166,7 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: 18),
               const Center(
                 child: Text(
-                  'GratisCash · versión 1.4',
+                  'GratisCash · versión 1.8.0 (10)',
                   style: TextStyle(color: GratisCashTheme.muted, fontSize: 12),
                 ),
               ),

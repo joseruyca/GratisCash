@@ -15,7 +15,7 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 5, vsync: this);
+  late final TabController _tabs = TabController(length: 6, vsync: this);
   int _refreshKey = 0;
 
   @override
@@ -166,6 +166,28 @@ class _AdminScreenState extends State<AdminScreen>
     }
   }
 
+  Future<void> _setUserRole(Map<String, dynamic> row, String role) async {
+    final id = row['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+
+    try {
+      await Services.repo.setUserRole(id: id, role: role);
+      if (!mounted) return;
+      _refresh();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rol actualizado y registrado.')),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo cambiar el rol. Solo un administrador puede hacerlo.'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _toggleUser(Map<String, dynamic> row) async {
     final id = row['id']?.toString() ?? '';
     if (id.isEmpty) return;
@@ -202,13 +224,13 @@ class _AdminScreenState extends State<AdminScreen>
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: Services.repo.isStaff(),
+    return FutureBuilder<UserProfile?>(
+      future: Services.repo.currentProfile(),
       builder: (context, access) {
         if (access.connectionState != ConnectionState.done) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
-        if (access.data != true) {
+        if (access.data?.isStaff != true) {
           return Scaffold(
             appBar: AppBar(title: const Text('Administración')),
             body: const EmptyState(
@@ -218,6 +240,9 @@ class _AdminScreenState extends State<AdminScreen>
             ),
           );
         }
+
+        final canManageRoles = access.data?.role == 'admin';
+        final currentUserId = access.data?.id;
 
         return Scaffold(
           appBar: AppBar(
@@ -231,6 +256,7 @@ class _AdminScreenState extends State<AdminScreen>
                 Tab(text: 'Denuncias'),
                 Tab(text: 'Revisiones'),
                 Tab(text: 'Usuarios'),
+                Tab(text: 'Métricas'),
               ],
             ),
             actions: [
@@ -282,6 +308,12 @@ class _AdminScreenState extends State<AdminScreen>
                     _UsersTab(
                       key: ValueKey('users-$_refreshKey'),
                       onToggle: _toggleUser,
+                      onRole: _setUserRole,
+                      canManageRoles: canManageRoles,
+                      currentUserId: currentUserId,
+                    ),
+                    _MetricsTab(
+                      key: ValueKey('metrics-$_refreshKey'),
                     ),
                   ],
                 ),
@@ -379,6 +411,61 @@ class _PendingTab extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    if ((row['image_url'] ?? '').toString().trim().isNotEmpty) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(
+                            row['image_url'].toString(),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              color: const Color(0xFFF2F4F5),
+                              alignment: Alignment.center,
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.broken_image_outlined,
+                                    color: GratisCashTheme.muted,
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'No se ha podido cargar la imagen',
+                                    style: TextStyle(
+                                      color: GratisCashTheme.muted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.visibility_outlined,
+                            size: 16,
+                            color: GratisCashTheme.muted,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Imagen aportada por el usuario. Revísala antes de aprobar.',
+                              style: TextStyle(
+                                color: GratisCashTheme.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 7),
                     Text(
                       '${row['source_name'] ?? ''} · ${row['reward_text'] ?? ''}',
@@ -673,9 +760,18 @@ class _ReportsTab extends StatelessWidget {
 }
 
 class _UsersTab extends StatelessWidget {
-  const _UsersTab({super.key, required this.onToggle});
+  const _UsersTab({
+    super.key,
+    required this.onToggle,
+    required this.onRole,
+    required this.canManageRoles,
+    required this.currentUserId,
+  });
 
   final Future<void> Function(Map<String, dynamic> row) onToggle;
+  final Future<void> Function(Map<String, dynamic> row, String role) onRole;
+  final bool canManageRoles;
+  final String? currentUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -727,14 +823,43 @@ class _UsersTab extends StatelessWidget {
                 subtitle: Text(
                   '@${row['username'] ?? 'usuario'} · $role · $reports denuncias abiertas',
                 ),
-                trailing: OutlinedButton(
-                  onPressed: () => onToggle(row),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: suspended
-                        ? GratisCashTheme.greenDark
-                        : const Color(0xFF9A303A),
-                  ),
-                  child: Text(suspended ? 'Restaurar' : 'Suspender'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (canManageRoles &&
+                        row['id']?.toString() != currentUserId)
+                      PopupMenuButton<String>(
+                        tooltip: 'Cambiar rol',
+                        onSelected: (value) => onRole(row, value),
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'user',
+                            enabled: role != 'user',
+                            child: const Text('Usuario'),
+                          ),
+                          PopupMenuItem(
+                            value: 'moderator',
+                            enabled: role != 'moderator',
+                            child: const Text('Moderador'),
+                          ),
+                          PopupMenuItem(
+                            value: 'admin',
+                            enabled: role != 'admin',
+                            child: const Text('Administrador'),
+                          ),
+                        ],
+                        icon: const Icon(Icons.admin_panel_settings_outlined),
+                      ),
+                    OutlinedButton(
+                      onPressed: () => onToggle(row),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: suspended
+                            ? GratisCashTheme.greenDark
+                            : const Color(0xFF9A303A),
+                      ),
+                      child: Text(suspended ? 'Restaurar' : 'Suspender'),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -847,4 +972,209 @@ String _reportReasonLabel(String code) {
 double _toDouble(dynamic value) {
   if (value is num) return value.toDouble();
   return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+
+class _MetricsTab extends StatelessWidget {
+  const _MetricsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: Services.repo.opportunityMetricsForAdmin(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const EmptyState(
+            icon: Icons.query_stats_rounded,
+            title: 'No se pueden cargar las métricas',
+            body: 'Estas métricas son internas y solo están disponibles para el equipo.',
+          );
+        }
+
+        final rows = snapshot.data ?? <Map<String, dynamic>>[];
+        if (rows.isEmpty) {
+          return const EmptyState(
+            icon: Icons.bar_chart_rounded,
+            title: 'Todavía no hay datos',
+            body: 'Los clics de salida aparecerán aquí cuando empiece a haber uso real.',
+          );
+        }
+
+        final total30d = rows.fold<int>(
+          0,
+          (sum, row) => sum + _toInt(row['clicks_30d']),
+        );
+        final sponsored30d = rows.fold<int>(
+          0,
+          (sum, row) =>
+              sum +
+              (row['is_sponsored'] == true ? _toInt(row['clicks_30d']) : 0),
+        );
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _MetricSummary(
+                  label: 'Salidas · 30 días',
+                  value: '$total30d',
+                  icon: Icons.open_in_new_rounded,
+                ),
+                _MetricSummary(
+                  label: 'Patrocinadas · 30 días',
+                  value: '$sponsored30d',
+                  icon: Icons.campaign_outlined,
+                ),
+                _MetricSummary(
+                  label: 'Oportunidades con datos',
+                  value: '${rows.length}',
+                  icon: Icons.local_offer_outlined,
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Rendimiento por oportunidad',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Métrica orientativa: cuenta salidas registradas por GratisCash, sin guardar IP, email ni identidad del visitante.',
+              style: TextStyle(
+                color: GratisCashTheme.muted,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final row in rows)
+              Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: row['is_sponsored'] == true
+                        ? const Color(0xFFFFF3D9)
+                        : const Color(0xFFF0F2F4),
+                    child: Icon(
+                      row['is_sponsored'] == true
+                          ? Icons.campaign_outlined
+                          : Icons.open_in_new_rounded,
+                      color: row['is_sponsored'] == true
+                          ? GratisCashTheme.amber
+                          : GratisCashTheme.muted,
+                    ),
+                  ),
+                  title: Text(
+                    (row['title'] ?? 'Oportunidad').toString(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text(
+                    row['is_sponsored'] == true
+                        ? 'Patrocinada · ${(row['sponsor_name'] ?? 'Marca').toString()}'
+                        : 'Orgánica',
+                  ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${_toInt(row['clicks_30d'])}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Text(
+                        '30 días',
+                        style: TextStyle(
+                          color: GratisCashTheme.muted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MetricSummary extends StatelessWidget {
+  const _MetricSummary({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 210,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: GratisCashTheme.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0ECFF),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: GratisCashTheme.violet),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: GratisCashTheme.muted,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+int _toInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }

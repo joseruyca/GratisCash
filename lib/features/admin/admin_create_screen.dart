@@ -28,10 +28,14 @@ class _AdminCreateScreenState extends State<AdminCreateScreen> {
   final _imageUrl = TextEditingController();
   final _photoCredit = TextEditingController();
   final _photoSourceUrl = TextEditingController();
+  final _sponsorName = TextEditingController();
 
   OpportunityCategory _category = OpportunityCategory.freeProduct;
   DateTime? _expiresAt;
+  DateTime? _sponsoredFrom;
+  DateTime? _sponsoredUntil;
   bool _featured = false;
+  bool _sponsored = false;
   bool _busy = false;
   bool _loading = false;
 
@@ -69,6 +73,10 @@ class _AdminCreateScreenState extends State<AdminCreateScreen> {
       _category = item.category;
       _expiresAt = item.expiresAt;
       _featured = item.isFeatured;
+      _sponsored = item.isSponsored;
+      _sponsorName.text = item.sponsorName ?? '';
+      _sponsoredFrom = item.sponsoredFrom;
+      _sponsoredUntil = item.sponsoredUntil;
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(publicErrorMessage(error))));
     } finally {
@@ -78,7 +86,7 @@ class _AdminCreateScreenState extends State<AdminCreateScreen> {
 
   @override
   void dispose() {
-    for (final controller in [_title, _description, _source, _sourceUrl, _affiliateUrl, _reward, _requirements, _minutes, _imageUrl, _photoCredit, _photoSourceUrl]) {
+    for (final controller in [_title, _description, _source, _sourceUrl, _affiliateUrl, _reward, _requirements, _minutes, _imageUrl, _photoCredit, _photoSourceUrl, _sponsorName]) {
       controller.dispose();
     }
     super.dispose();
@@ -91,6 +99,21 @@ class _AdminCreateScreenState extends State<AdminCreateScreen> {
     if (optional && text.isEmpty) return true;
     final uri = Uri.tryParse(text);
     return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
+  }
+
+  Future<DateTime?> _pickCampaignDate(DateTime? current) async {
+    final now = DateTime.now();
+    return showDatePicker(
+      context: context,
+      firstDate: now.subtract(const Duration(days: 3650)),
+      lastDate: now.add(const Duration(days: 3650)),
+      initialDate: current ?? now,
+    );
+  }
+
+  String _dateLabel(DateTime? value, String empty) {
+    if (value == null) return empty;
+    return '${value.day}/${value.month}/${value.year}';
   }
 
   Future<void> _pickDate() async {
@@ -128,6 +151,18 @@ class _AdminCreateScreenState extends State<AdminCreateScreen> {
       return;
     }
 
+    if (_sponsored && _sponsorName.text.trim().isEmpty) {
+      _urlError('Indica el nombre de la marca o patrocinador.');
+      return;
+    }
+    if (_sponsored &&
+        _sponsoredFrom != null &&
+        _sponsoredUntil != null &&
+        !_sponsoredUntil!.isAfter(_sponsoredFrom!)) {
+      _urlError('El final de la campaña debe ser posterior al inicio.');
+      return;
+    }
+
     final data = <String, dynamic>{
       'title': _title.text.trim(),
       'description': _description.text.trim(),
@@ -143,6 +178,12 @@ class _AdminCreateScreenState extends State<AdminCreateScreen> {
       'photo_credit': _photoCredit.text.trim().isEmpty ? null : _photoCredit.text.trim(),
       'photo_source_url': _photoSourceUrl.text.trim().isEmpty ? null : _photoSourceUrl.text.trim(),
       'is_featured': _featured,
+      'is_sponsored': _sponsored,
+      'sponsor_name': _sponsored ? _sponsorName.text.trim() : null,
+      'sponsored_from':
+          _sponsored ? _sponsoredFrom?.toUtc().toIso8601String() : null,
+      'sponsored_until':
+          _sponsored ? _sponsoredUntil?.toUtc().toIso8601String() : null,
     };
 
     setState(() => _busy = true);
@@ -234,8 +275,107 @@ class _AdminCreateScreenState extends State<AdminCreateScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                SwitchListTile(value: _featured, onChanged: (value) => setState(() => _featured = value), contentPadding: EdgeInsets.zero, title: const Text('Destacada', style: TextStyle(fontWeight: FontWeight.w800)), subtitle: const Text('Aparecerá antes en el feed Destacados.')),
+                const SizedBox(height: 14),
+                SurfaceCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Visibilidad y monetización',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        value: _featured,
+                        onChanged: (value) =>
+                            setState(() => _featured = value),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text(
+                          'Destacada',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        subtitle: const Text(
+                          'Selección editorial de GratisCash. No implica pago.',
+                        ),
+                      ),
+                      const Divider(),
+                      SwitchListTile(
+                        value: _sponsored,
+                        onChanged: (value) => setState(() {
+                          _sponsored = value;
+                          if (!value) {
+                            _sponsorName.clear();
+                            _sponsoredFrom = null;
+                            _sponsoredUntil = null;
+                          }
+                        }),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text(
+                          'Patrocinada',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        subtitle: const Text(
+                          'Campaña pagada. Se mostrará claramente al usuario como contenido patrocinado.',
+                        ),
+                      ),
+                      if (_sponsored) ...[
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _sponsorName,
+                          maxLength: 100,
+                          decoration: const InputDecoration(
+                            labelText: 'Marca / patrocinador',
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  final value =
+                                      await _pickCampaignDate(_sponsoredFrom);
+                                  if (value != null && mounted) {
+                                    setState(() => _sponsoredFrom = value);
+                                  }
+                                },
+                                icon: const Icon(Icons.play_circle_outline),
+                                label: Text(
+                                  _dateLabel(
+                                    _sponsoredFrom,
+                                    'Inicio opcional',
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  final value =
+                                      await _pickCampaignDate(_sponsoredUntil);
+                                  if (value != null && mounted) {
+                                    setState(() => _sponsoredUntil = value);
+                                  }
+                                },
+                                icon: const Icon(Icons.event_busy_outlined),
+                                label: Text(
+                                  _dateLabel(
+                                    _sponsoredUntil,
+                                    'Fin opcional',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 12),
                 SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Guardando…' : (_editing ? 'Guardar cambios' : 'Publicar ahora')))),
               ],

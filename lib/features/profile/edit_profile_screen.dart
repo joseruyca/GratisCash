@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_error.dart';
 import '../../core/services.dart';
@@ -18,7 +21,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _displayName = TextEditingController();
   final _username = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
   bool _loading = true;
+  Uint8List? _avatarBytes;
+  String? _avatarUrl;
+  String? _avatarMimeType;
   bool _busy = false;
   String? _error;
 
@@ -48,7 +55,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
       _displayName.text = profile.displayName;
       _username.text = profile.username;
-      setState(() => _loading = false);
+      setState(() {
+        _avatarUrl = profile.avatarUrl;
+        _loading = false;
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -84,6 +94,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return null;
   }
 
+  Future<void> _pickAvatar() async {
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 86,
+      );
+      if (file == null) return;
+
+      final extension = file.name.contains('.')
+          ? file.name.split('.').last.toLowerCase()
+          : '';
+      const allowed = <String>{'jpg', 'jpeg', 'png', 'webp'};
+      if (!allowed.contains(extension)) {
+        _showMessage('Usa una imagen JPG, PNG o WebP.');
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty || bytes.lengthInBytes > 5 * 1024 * 1024) {
+        _showMessage('La imagen de perfil debe pesar menos de 5 MB.');
+        return;
+      }
+
+      final mime = file.mimeType?.toLowerCase() ??
+          (extension == 'png'
+              ? 'image/png'
+              : extension == 'webp'
+                  ? 'image/webp'
+                  : 'image/jpeg');
+
+      if (!mounted) return;
+      setState(() {
+        _avatarBytes = bytes;
+        _avatarMimeType = mime;
+      });
+    } catch (_) {
+      _showMessage('No hemos podido abrir esa imagen. Prueba con otra.');
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
@@ -92,6 +151,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         displayName: _displayName.text.trim(),
         username: _username.text.trim(),
       );
+
+      final avatarBytes = _avatarBytes;
+      final avatarMimeType = _avatarMimeType;
+      if (avatarBytes != null && avatarMimeType != null) {
+        final url = await Services.repo.uploadMyAvatar(
+          bytes: avatarBytes,
+          contentType: avatarMimeType,
+        );
+        if (mounted) {
+          setState(() {
+            _avatarUrl = url;
+            _avatarBytes = null;
+            _avatarMimeType = null;
+          });
+        }
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Perfil actualizado.')),
@@ -127,17 +203,75 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                         children: [
-                          const SurfaceCard(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          SurfaceCard(
+                            child: Column(
                               children: [
-                                Icon(Icons.shield_outlined, color: GratisCashTheme.green),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Tu nombre visible y tu usuario son públicos. El email de acceso no se muestra en tu perfil.',
-                                    style: TextStyle(color: GratisCashTheme.muted, height: 1.45),
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 46,
+                                      backgroundColor: const Color(0xFFE0F7EE),
+                                      backgroundImage: _avatarBytes != null
+                                          ? MemoryImage(_avatarBytes!)
+                                          : (_avatarUrl?.trim().isNotEmpty == true
+                                              ? NetworkImage(_avatarUrl!) as ImageProvider
+                                              : null),
+                                      child: _avatarBytes == null &&
+                                              _avatarUrl?.trim().isNotEmpty != true
+                                          ? const Icon(
+                                              Icons.person_rounded,
+                                              size: 42,
+                                              color: GratisCashTheme.greenDark,
+                                            )
+                                          : null,
+                                    ),
+                                    Positioned(
+                                      right: -4,
+                                      bottom: -4,
+                                      child: IconButton.filled(
+                                        tooltip: 'Cambiar foto',
+                                        onPressed: _busy ? null : _pickAvatar,
+                                        icon: const Icon(Icons.photo_camera_outlined),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Foto de perfil',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'JPG, PNG o WebP · máximo 5 MB. La foto será pública.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: GratisCashTheme.muted,
+                                    fontSize: 12.5,
                                   ),
+                                ),
+                                const SizedBox(height: 14),
+                                const Divider(),
+                                const SizedBox(height: 10),
+                                const Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.shield_outlined,
+                                      color: GratisCashTheme.green,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Tu nombre visible y tu usuario son públicos. El email de acceso no se muestra en tu perfil.',
+                                        style: TextStyle(
+                                          color: GratisCashTheme.muted,
+                                          height: 1.45,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

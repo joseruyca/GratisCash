@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/auth_guard.dart';
 import '../../core/services.dart';
@@ -21,8 +24,11 @@ class _SubmitScreenState extends State<SubmitScreen> {
   final _reward = TextEditingController();
   final _description = TextEditingController();
   final _source = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   OpportunityCategory _category = OpportunityCategory.freeProduct;
+  XFile? _image;
+  Uint8List? _imageBytes;
   DateTime? _expiresAt;
   bool _checked = false;
   bool _busy = false;
@@ -60,6 +66,68 @@ class _SubmitScreenState extends State<SubmitScreen> {
     );
     if (!mounted || date == null) return;
     setState(() => _expiresAt = date);
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 88,
+      );
+      if (file == null) return;
+
+      final extension = file.name.contains('.')
+          ? file.name.split('.').last.toLowerCase()
+          : '';
+      const allowed = <String>{'jpg', 'jpeg', 'png', 'webp'};
+      if (!allowed.contains(extension)) {
+        _message('Usa una imagen JPG, PNG o WebP.');
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty || bytes.lengthInBytes > 8 * 1024 * 1024) {
+        _message('La imagen debe pesar menos de 8 MB.');
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _image = file;
+        _imageBytes = bytes;
+      });
+    } catch (_) {
+      _message('No hemos podido abrir esa imagen. Prueba con otra.');
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _image = null;
+      _imageBytes = null;
+    });
+  }
+
+  String? get _imageExtension {
+    final name = _image?.name ?? '';
+    if (!name.contains('.')) return null;
+    return name.split('.').last.toLowerCase();
+  }
+
+  String? get _imageContentType {
+    final explicit = _image?.mimeType?.toLowerCase();
+    if (explicit == 'image/jpeg' ||
+        explicit == 'image/png' ||
+        explicit == 'image/webp') {
+      return explicit;
+    }
+    return switch (_imageExtension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => null,
+    };
   }
 
   Future<List<DuplicateCandidate>> _findDuplicates() async {
@@ -167,7 +235,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
         return;
       }
 
-      await Services.repo.submitOpportunity({
+      final opportunityId = await Services.repo.submitOpportunity({
         'title': _title.text.trim(),
         'description': _description.text.trim(),
         'source_name': _source.text.trim(),
@@ -176,8 +244,30 @@ class _SubmitScreenState extends State<SubmitScreen> {
         'category': _category.name,
         'expires_at': _expiresAt?.toUtc().toIso8601String(),
       });
+
+      var imageFailed = false;
+      final bytes = _imageBytes;
+      final extension = _imageExtension;
+      final contentType = _imageContentType;
+      if (bytes != null && extension != null && contentType != null) {
+        try {
+          await Services.repo.attachSubmissionImage(
+            opportunityId: opportunityId,
+            bytes: bytes,
+            extension: extension,
+            contentType: contentType,
+          );
+        } catch (_) {
+          imageFailed = true;
+        }
+      }
+
       if (!mounted) return;
-      _message('Enviada a revisión. Podrás seguir el estado desde tu perfil.');
+      _message(
+        imageFailed
+            ? 'Enviada a revisión. La imagen no pudo adjuntarse, pero tu propuesta se ha guardado.'
+            : 'Enviada a revisión. Podrás seguir el estado desde tu perfil.',
+      );
       context.go('/profile');
     } catch (error) {
       if (!mounted) return;
@@ -207,7 +297,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
         description: _description.text.trim(),
         sourceName: _source.text.trim().isEmpty ? 'Fuente' : _source.text.trim(),
         sourceUrl: _url.text.trim().isEmpty
-            ? 'https://example.com'
+            ? ''
             : _url.text.trim(),
         rewardText: _reward.text.trim().isEmpty
             ? 'Beneficio'
@@ -281,8 +371,12 @@ class _SubmitScreenState extends State<SubmitScreen> {
                         category: _category,
                         expiresAt: _expiresAt,
                         checking: _checkingDuplicates,
+                        imageBytes: _imageBytes,
+                        imageName: _image?.name,
                         onCategory: (value) => setState(() => _category = value),
                         onPickDate: _pickDate,
+                        onPickImage: _pickImage,
+                        onRemoveImage: _removeImage,
                         onBack: () => setState(() => _step = 0),
                         onNext: _next,
                         requiredValidator: _required,
@@ -290,6 +384,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
                     _ => _ReviewStep(
                         key: const ValueKey('review'),
                         preview: _preview,
+                        previewImage: _imageBytes,
                         duplicates: _duplicates,
                         checked: _checked,
                         busy: _busy,
@@ -431,8 +526,12 @@ class _DataStep extends StatelessWidget {
     required this.category,
     required this.expiresAt,
     required this.checking,
+    required this.imageBytes,
+    required this.imageName,
     required this.onCategory,
     required this.onPickDate,
+    required this.onPickImage,
+    required this.onRemoveImage,
     required this.onBack,
     required this.onNext,
     required this.requiredValidator,
@@ -445,8 +544,12 @@ class _DataStep extends StatelessWidget {
   final OpportunityCategory category;
   final DateTime? expiresAt;
   final bool checking;
+  final Uint8List? imageBytes;
+  final String? imageName;
   final ValueChanged<OpportunityCategory> onCategory;
   final VoidCallback onPickDate;
+  final Future<void> Function() onPickImage;
+  final VoidCallback onRemoveImage;
   final VoidCallback onBack;
   final Future<void> Function() onNext;
   final String? Function(String?) requiredValidator;
@@ -525,29 +628,11 @@ class _DataStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F6F7),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.image_outlined, size: 20, color: GratisCashTheme.green),
-                SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    'Las imágenes las añade moderación con una fuente y licencia controladas. Así evitamos archivos inseguros y problemas de derechos.',
-                    style: TextStyle(
-                      color: GratisCashTheme.muted,
-                      height: 1.35,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          _ImagePickerCard(
+            bytes: imageBytes,
+            fileName: imageName,
+            onPick: onPickImage,
+            onRemove: onRemoveImage,
           ),
           const SizedBox(height: 16),
           Row(
@@ -577,6 +662,7 @@ class _ReviewStep extends StatelessWidget {
   const _ReviewStep({
     super.key,
     required this.preview,
+    required this.previewImage,
     required this.duplicates,
     required this.checked,
     required this.busy,
@@ -586,6 +672,7 @@ class _ReviewStep extends StatelessWidget {
   });
 
   final Opportunity preview;
+  final Uint8List? previewImage;
   final List<DuplicateCandidate> duplicates;
   final bool checked;
   final bool busy;
@@ -607,6 +694,10 @@ class _ReviewStep extends StatelessWidget {
                 style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 14),
+              if (previewImage != null) ...[
+                _SelectedImagePreview(bytes: previewImage!),
+                const SizedBox(height: 12),
+              ],
               OpportunityCard(item: preview, onTap: () {}, showStatus: true),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -695,6 +786,153 @@ class _ReviewStep extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+
+class _ImagePickerCard extends StatelessWidget {
+  const _ImagePickerCard({
+    required this.bytes,
+    required this.fileName,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  final Uint8List? bytes;
+  final String? fileName;
+  final Future<void> Function() onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = bytes != null;
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: hasImage ? const Color(0xFFF1FAF6) : const Color(0xFFF3F6F7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasImage ? const Color(0xFFCBEBDD) : GratisCashTheme.border,
+        ),
+      ),
+      child: hasImage
+          ? Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    bytes!,
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            size: 18,
+                            color: GratisCashTheme.green,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Imagen preparada',
+                            style: TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        fileName ?? 'Imagen seleccionada',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: GratisCashTheme.muted,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Moderación la revisará antes de publicar.',
+                        style: TextStyle(
+                          color: GratisCashTheme.muted,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Quitar imagen',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.add_photo_alternate_outlined,
+                  size: 22,
+                  color: GratisCashTheme.green,
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Añade una imagen',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Opcional · JPG, PNG o WebP · máximo 8 MB. Debes tener derecho a compartirla.',
+                        style: TextStyle(
+                          color: GratisCashTheme.muted,
+                          height: 1.35,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: onPick,
+                  child: const Text('Elegir'),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _SelectedImagePreview extends StatelessWidget {
+  const _SelectedImagePreview({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+        ),
+      ),
     );
   }
 }

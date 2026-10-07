@@ -186,17 +186,30 @@ class OpportunityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final expired = item.isExpired;
     final endLabel = _endLabel(item.expiresAt, expired);
+    final canOpen = !showStatus ||
+        item.status == OpportunityStatus.active ||
+        item.status == OpportunityStatus.expired ||
+        expired;
+    final actionLabel = expired
+        ? 'Historial'
+        : switch (item.status) {
+            OpportunityStatus.pending => 'En revisión',
+            OpportunityStatus.rejected => 'Rechazada',
+            OpportunityStatus.draft => 'Borrador',
+            OpportunityStatus.active => 'Ver',
+            OpportunityStatus.expired => 'Historial',
+          };
 
     return Card(
       color: item.isFeatured && !expired ? const Color(0xFFFCFFFD) : Colors.white,
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: onTap,
+        onTap: canOpen ? onTap : null,
         borderRadius: BorderRadius.circular(20),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 620;
-            final imageWidth = compact ? 112.0 : 150.0;
+            final imageWidth = compact ? 104.0 : 150.0;
             final imageHeight = compact ? 132.0 : 128.0;
 
             return Padding(
@@ -216,11 +229,16 @@ class OpportunityCard extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            _VoteChip(
-                              count: item.upvotes,
-                              onTap: onVote,
-                              expired: expired,
-                            ),
+                            if (showStatus &&
+                                item.status != OpportunityStatus.active &&
+                                !expired)
+                              CategoryPill(category: item.category)
+                            else
+                              _VoteChip(
+                                count: item.upvotes,
+                                onTap: onVote,
+                                expired: expired,
+                              ),
                             const Spacer(),
                             if (showStatus || expired) ...[
                               StatusPill(
@@ -247,11 +265,38 @@ class OpportunityCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        if (item.isFeatured && !expired) ...[
+                        if (item.isSponsored && !expired) ...[
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.campaign_outlined,
+                                size: 13,
+                                color: GratisCashTheme.amber,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  item.sponsorName?.trim().isNotEmpty == true
+                                      ? 'PATROCINADA · ${item.sponsorName}'
+                                      : 'PATROCINADA',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: GratisCashTheme.amber,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.55,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                        ] else if (item.isFeatured && !expired) ...[
                           const Text(
                             'DESTACADA',
                             style: TextStyle(
-                              color: GratisCashTheme.greenDark,
+                              color: GratisCashTheme.violet,
                               fontSize: 10.5,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.7,
@@ -282,7 +327,7 @@ class OpportunityCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: compact ? 19 : 20,
                                 fontWeight: FontWeight.w900,
-                                color: expired ? Colors.grey : GratisCashTheme.green,
+                                color: expired ? Colors.grey : categoryAccent(item.category),
                                 letterSpacing: -0.3,
                               ),
                             ),
@@ -310,14 +355,6 @@ class OpportunityCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            if (item.isVerified) ...[
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.verified_rounded,
-                                size: 15,
-                                color: GratisCashTheme.green,
-                              ),
-                            ],
                           ],
                         ),
                         if (!compact && item.description.isNotEmpty) ...[
@@ -373,6 +410,11 @@ class OpportunityCard extends StatelessWidget {
                               IconButton(
                                 tooltip: saved ? 'Quitar de guardadas' : 'Guardar',
                                 visualDensity: VisualDensity.compact,
+                                constraints: const BoxConstraints(
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                ),
+                                padding: const EdgeInsets.all(6),
                                 onPressed: onSave,
                                 icon: Icon(
                                   saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
@@ -381,7 +423,7 @@ class OpportunityCard extends StatelessWidget {
                                 ),
                               ),
                             FilledButton(
-                              onPressed: onTap,
+                              onPressed: canOpen ? onTap : null,
                               style: FilledButton.styleFrom(
                                 minimumSize: Size.zero,
                                 padding: EdgeInsets.symmetric(
@@ -394,7 +436,15 @@ class OpportunityCard extends StatelessWidget {
                                 foregroundColor:
                                     expired ? GratisCashTheme.muted : Colors.white,
                               ),
-                              child: Text(expired ? 'Ver historial' : 'Ver oportunidad'),
+                              child: Text(
+                                compact
+                                    ? actionLabel
+                                    : (expired
+                                        ? 'Ver historial'
+                                        : canOpen
+                                            ? 'Ver oportunidad'
+                                            : actionLabel),
+                              ),
                             ),
                           ],
                         ),
@@ -492,26 +542,6 @@ class OpportunityImage extends StatelessWidget {
               ),
             ),
           ),
-          if (item.isVerified && !item.isExpired)
-            Positioned(
-              left: 7,
-              bottom: 7,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.94),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified_rounded, size: 13, color: GratisCashTheme.green),
-                    SizedBox(width: 3),
-                    Text('Verificada', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: GratisCashTheme.greenDark)),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -541,14 +571,17 @@ class _PlaceholderImage extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: item.isExpired
               ? const [Color(0xFFE5E7E9), Color(0xFFF5F5F5)]
-              : const [Color(0xFFDFF6ED), Color(0xFFF5FBF8)],
+              : [
+                  categoryColor(item.category),
+                  categoryColor(item.category).withValues(alpha: 0.35),
+                ],
         ),
       ),
       child: Center(
         child: Icon(
           icon,
           size: 38,
-          color: item.isExpired ? Colors.grey : GratisCashTheme.green,
+          color: item.isExpired ? Colors.grey : categoryAccent(item.category),
         ),
       ),
     );
@@ -570,10 +603,10 @@ class CategoryPill extends StatelessWidget {
       ),
       child: Text(
         category.label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          color: GratisCashTheme.dark,
+          color: categoryAccent(category),
         ),
       ),
     );
@@ -583,15 +616,30 @@ class CategoryPill extends StatelessWidget {
 Color categoryColor(OpportunityCategory category) {
   switch (category) {
     case OpportunityCategory.money:
-      return const Color(0xFFE5F7F0);
+      return const Color(0xFFEAF0FF);
     case OpportunityCategory.freeProduct:
-      return const Color(0xFFEAF3FF);
+      return const Color(0xFFFFECEF);
     case OpportunityCategory.cashback:
-      return const Color(0xFFFFF2D8);
+      return const Color(0xFFFFF3D9);
     case OpportunityCategory.bonus:
-      return const Color(0xFFF2EAFE);
+      return const Color(0xFFF0ECFF);
     case OpportunityCategory.mission:
-      return const Color(0xFFFFE9ED);
+      return const Color(0xFFE5F6F5);
+  }
+}
+
+Color categoryAccent(OpportunityCategory category) {
+  switch (category) {
+    case OpportunityCategory.money:
+      return GratisCashTheme.blue;
+    case OpportunityCategory.freeProduct:
+      return GratisCashTheme.coral;
+    case OpportunityCategory.cashback:
+      return GratisCashTheme.amber;
+    case OpportunityCategory.bonus:
+      return GratisCashTheme.violet;
+    case OpportunityCategory.mission:
+      return GratisCashTheme.teal;
   }
 }
 
