@@ -150,6 +150,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.cloud_off_outlined,
                     title: 'No podemos cargar tu perfil',
                     body: 'Comprueba tu conexión e inténtalo de nuevo.',
+                    action: FilledButton.icon(
+                      onPressed: () => setState(() => _refreshKey++),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Reintentar'),
+                    ),
                   );
                 }
                 final data = snapshot.data;
@@ -331,7 +336,7 @@ class _ProfileBody extends StatelessWidget {
                   child: Text(
                     [
                       if (pending > 0) '$pending en revisión',
-                      if (rejected > 0) '$rejected rechazadas',
+                      if (rejected > 0) rejected == 1 ? '1 rechazada' : '$rejected rechazadas',
                     ].join(' · '),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),

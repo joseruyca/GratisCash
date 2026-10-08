@@ -178,7 +178,7 @@ class _DetailScreenState extends State<DetailScreen> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Enlace copiado.')),
+      const SnackBar(content: Text('Enlace copiado al portapapeles.')),
     );
   }
 
@@ -421,7 +421,7 @@ class _DetailScreenState extends State<DetailScreen> {
         title: const GratisCashLogo(),
         actions: [
           IconButton(
-            tooltip: 'Compartir',
+            tooltip: 'Copiar enlace',
             onPressed: () async {
               final item = (await Services.repo.getOpportunity(widget.id));
               if (item != null && mounted) {

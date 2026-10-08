@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/app_error.dart';
+import '../../core/auth_guard.dart';
 import '../../core/services.dart';
 import '../../data/models.dart';
 import '../../widgets/common.dart';
@@ -16,7 +17,34 @@ class SavedScreen extends StatefulWidget {
 class _SavedScreenState extends State<SavedScreen> {
   int _refreshKey = 0;
 
-  Future<List<Opportunity>> _load() => Services.repo.savedOpportunities();
+  Future<_SavedData> _load() async {
+    final items = await Services.repo.savedOpportunities();
+    final voteStates =
+        await Services.repo.voteStates(items.map((item) => item.id));
+    return _SavedData(items: items, voteStates: voteStates);
+  }
+
+  Future<void> _vote(String id, int value) async {
+    final allowed = await ensureCommunityAccess(
+      context,
+      message: 'Inicia sesión para valorar oportunidades.',
+    );
+    if (!allowed || !mounted) return;
+
+    try {
+      await Services.repo.setVote(id, value);
+      if (mounted) setState(() => _refreshKey++);
+    } catch (error) {
+      if (!mounted) return;
+      final raw = error.toString().toLowerCase();
+      final message = raw.contains('authors cannot vote')
+          ? 'No puedes valorar una oportunidad que has publicado tú.'
+          : publicErrorMessage(error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
 
   Future<void> _remove(String id) async {
     try {
@@ -44,7 +72,7 @@ class _SavedScreenState extends State<SavedScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Guardadas')),
-      body: FutureBuilder<List<Opportunity>>(
+      body: FutureBuilder<_SavedData>(
         key: ValueKey(_refreshKey),
         future: _load(),
         builder: (context, snapshot) {
@@ -61,13 +89,18 @@ class _SavedScreenState extends State<SavedScreen> {
               ),
             );
           }
-          final items = snapshot.data ?? <Opportunity>[];
+          final data = snapshot.data ??
+              const _SavedData(
+                items: <Opportunity>[],
+                voteStates: <String, int>{},
+              );
+          final items = data.items;
           if (items.isEmpty) {
             return EmptyState(
               icon: Icons.bookmark_border_rounded,
               title: 'Todavía no has guardado nada',
               body: 'Pulsa el marcador de cualquier oportunidad y aparecerá aquí.',
-              action: OutlinedButton(onPressed: () => context.go('/'), child: const Text('Explorar oportunidades')),
+              action: OutlinedButton(onPressed: () => context.go('/explore'), child: const Text('Explorar oportunidades')),
             );
           }
           return ListView.builder(
@@ -79,6 +112,8 @@ class _SavedScreenState extends State<SavedScreen> {
                 item: item,
                 saved: true,
                 showStatus: item.isExpired,
+                userVote: data.voteStates[item.id] ?? 0,
+                onVote: (value) => _vote(item.id, value),
                 onTap: () => context.go('/opportunity/${item.id}'),
                 onSave: () => _remove(item.id),
               );
@@ -88,4 +123,15 @@ class _SavedScreenState extends State<SavedScreen> {
       ),
     );
   }
+}
+
+
+class _SavedData {
+  const _SavedData({
+    required this.items,
+    required this.voteStates,
+  });
+
+  final List<Opportunity> items;
+  final Map<String, int> voteStates;
 }

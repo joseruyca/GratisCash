@@ -246,7 +246,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) return;
       await _showInfoDialog(
         title: 'Correo reenviado',
-        body: 'Si la cuenta está pendiente de confirmar, Supabase volverá a enviar el enlace de verificación.',
+        body: 'Si la cuenta está pendiente de confirmar, volveremos a enviar el enlace de verificación a ese correo.',
       );
     } on AuthException catch (error) {
       _showMessage(_friendlyAuthError(error.message));

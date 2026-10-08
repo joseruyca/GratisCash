@@ -125,7 +125,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               children: [
-                _chip(null, 'Todo'),
+                _chip(null, 'Todas'),
                 for (final item in OpportunityCategory.values)
                   _chip(item, item.label),
                 Padding(

@@ -28,7 +28,7 @@ class _FinishedScreenState extends State<FinishedScreen> {
       final cutoff = DateTime.now().subtract(const Duration(days: 30));
       items = items.where((item) => item.expiresAt?.isAfter(cutoff) ?? false).toList();
     } else if (_filter == 'Más votadas') {
-      items.sort((a, b) => b.upvotes.compareTo(a.upvotes));
+      items.sort((a, b) => b.voteScore.compareTo(a.voteScore));
     } else {
       items.sort((a, b) {
         final da = a.expiresAt ?? a.createdAt;
@@ -50,7 +50,16 @@ class _FinishedScreenState extends State<FinishedScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return EmptyState(icon: Icons.cloud_off_outlined, title: 'No se puede cargar el histórico', body: publicErrorMessage(snapshot.error));
+            return EmptyState(
+              icon: Icons.cloud_off_outlined,
+              title: 'No se puede cargar el histórico',
+              body: publicErrorMessage(snapshot.error),
+              action: FilledButton.icon(
+                onPressed: () => setState(() {}),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reintentar'),
+              ),
+            );
           }
           final items = snapshot.data ?? <Opportunity>[];
           return CustomScrollView(

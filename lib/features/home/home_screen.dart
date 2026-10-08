@@ -268,7 +268,7 @@ class _Feed extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 children: [
                   _CategoryChoice(
-                    label: 'Todos',
+                    label: 'Todas',
                     selected: category == null,
                     onTap: () => onCategory(null),
                   ),
