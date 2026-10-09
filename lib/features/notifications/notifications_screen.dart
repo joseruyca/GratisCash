@@ -67,6 +67,7 @@ class NotificationsScreen extends StatelessWidget {
             );
             break;
           case OpportunityStatus.expired:
+          case OpportunityStatus.draft:
             break;
         }
       }
