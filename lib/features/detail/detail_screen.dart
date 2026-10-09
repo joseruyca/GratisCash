@@ -172,7 +172,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Future<void> _share(Opportunity item) async {
-    final link = '${AppConfig.websiteUrl}/opportunity/${item.id}';
+    final link = '${AppConfig.websiteUrl}/o/${item.id}';
     await Clipboard.setData(ClipboardData(text: link));
     if (!mounted) {
       return;
