@@ -49,6 +49,16 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: 'Oportunidades nuevas y las que terminan pronto',
                       route: '/notifications',
                     ),
+                    if (signedIn) ...[
+                      const Divider(height: 1),
+                      _tile(
+                        context,
+                        icon: Icons.tune_rounded,
+                        title: 'Qué quieres seguir',
+                        subtitle: 'Categorías y avisos que te interesan',
+                        route: '/settings/following',
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -166,7 +176,7 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: 18),
               const Center(
                 child: Text(
-                  'GratisCash · versión 1.11.0 (13)',
+                  'GratisCash · versión 1.12.0 (14)',
                   style: TextStyle(color: GratisCashTheme.muted, fontSize: 12),
                 ),
               ),

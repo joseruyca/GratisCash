@@ -20,10 +20,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profile = await Services.repo.currentProfile();
     final submissions = await Services.repo.mySubmissions();
     final saved = await Services.repo.savedIds();
+    final contribution = await Services.repo.contributionStats();
     return _ProfileData(
       profile: profile,
       submissions: submissions,
       savedCount: saved.length,
+      contribution: contribution,
     );
   }
 
@@ -240,6 +242,40 @@ class _ProfileBody extends StatelessWidget {
                           '@${profile.username}',
                           style: const TextStyle(color: GratisCashTheme.muted),
                         ),
+                        const SizedBox(height: 7),
+                        Tooltip(
+                          message:
+                              'Nivel basado en aportaciones aprobadas y valoración agregada de la comunidad.',
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0ECFF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.workspace_premium_outlined,
+                                  size: 15,
+                                  color: GratisCashTheme.violet,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  data.contribution.level,
+                                  style: const TextStyle(
+                                    color: GratisCashTheme.violet,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         if (profile.isSuspended) ...[
                           const SizedBox(height: 6),
                           const StatusPill('Cuenta limitada', active: false),
@@ -282,6 +318,15 @@ class _ProfileBody extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(child: _Stat(value: '$approved', label: 'Aprobadas')),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _Stat(
+                      value: data.contribution.communityScore > 0
+                          ? '+${data.contribution.communityScore}'
+                          : '${data.contribution.communityScore}',
+                      label: 'Valoración',
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _Stat(value: '${data.savedCount}', label: 'Guardadas'),
@@ -491,9 +536,11 @@ class _ProfileData {
     required this.profile,
     required this.submissions,
     required this.savedCount,
+    required this.contribution,
   });
 
   final UserProfile? profile;
   final List<Opportunity> submissions;
   final int savedCount;
+  final ContributionStats contribution;
 }

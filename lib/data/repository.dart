@@ -22,6 +22,9 @@ abstract class GratisCashRepository {
   Future<Set<String>> savedIds();
   Future<List<Opportunity>> savedOpportunities();
   Future<UserProfile?> currentProfile();
+  Future<ContributionStats> contributionStats();
+  Future<NotificationPreferences> notificationPreferences();
+  Future<void> saveNotificationPreferences(NotificationPreferences preferences);
   Future<void> updateMyProfile({
     required String displayName,
     required String username,
@@ -318,6 +321,63 @@ class SupabaseRepository implements GratisCashRepository {
       return null;
     }
     return _profileFromMap(Map<String, dynamic>.from(row));
+  }
+
+
+  @override
+  Future<ContributionStats> contributionStats() async {
+    if (db.auth.currentUser == null) {
+      return const ContributionStats(
+        approvedCount: 0,
+        communityScore: 0,
+        level: 'Nuevo',
+      );
+    }
+    final row = await db
+        .from('profiles_public')
+        .select('approved_count,community_score,contribution_level')
+        .eq('id', _uid)
+        .maybeSingle();
+    if (row == null) {
+      return const ContributionStats(
+        approvedCount: 0,
+        communityScore: 0,
+        level: 'Nuevo',
+      );
+    }
+    return ContributionStats.fromMap(Map<String, dynamic>.from(row));
+  }
+
+  @override
+  Future<NotificationPreferences> notificationPreferences() async {
+    if (db.auth.currentUser == null) {
+      return const NotificationPreferences();
+    }
+    final row = await db
+        .from('notification_preferences')
+        .select()
+        .eq('user_id', _uid)
+        .maybeSingle();
+    if (row == null) {
+      return const NotificationPreferences();
+    }
+    return NotificationPreferences.fromMap(Map<String, dynamic>.from(row));
+  }
+
+  @override
+  Future<void> saveNotificationPreferences(
+    NotificationPreferences preferences,
+  ) async {
+    await db.from('notification_preferences').upsert({
+      'user_id': _uid,
+      'categories': preferences.categories
+          .map((category) => category.name)
+          .toList(growable: false),
+      'include_new': preferences.includeNew,
+      'include_saved_deadlines': preferences.includeSavedDeadlines,
+      'include_submission_updates': preferences.includeSubmissionUpdates,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   @override

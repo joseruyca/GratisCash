@@ -15,6 +15,7 @@ import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/saved/saved_screen.dart';
 import '../features/settings/delete_account_screen.dart';
+import '../features/settings/notification_preferences_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/submit/submit_screen.dart';
 import '../widgets/common.dart';
@@ -39,6 +40,7 @@ final router = GoRouter(
     GoRoute(path: '/auth/recovery', builder: (context, state) => const RecoveryScreen()),
     GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
     GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
+    GoRoute(path: '/settings/following', builder: (context, state) => const NotificationPreferencesScreen()),
     GoRoute(path: '/profile/edit', builder: (context, state) => const EditProfileScreen()),
     GoRoute(path: '/account/delete', builder: (context, state) => const DeleteAccountScreen()),
     GoRoute(path: '/legal/:kind', builder: (context, state) => LegalScreen(kind: state.pathParameters['kind']!)),

@@ -466,3 +466,58 @@ DateTime? _dateOrNull(dynamic value) {
   if (value == null) return null;
   return DateTime.tryParse(value.toString());
 }
+
+
+class NotificationPreferences {
+  const NotificationPreferences({
+    this.categories = const <OpportunityCategory>{},
+    this.includeNew = true,
+    this.includeSavedDeadlines = true,
+    this.includeSubmissionUpdates = true,
+  });
+
+  final Set<OpportunityCategory> categories;
+  final bool includeNew;
+  final bool includeSavedDeadlines;
+  final bool includeSubmissionUpdates;
+
+  bool follows(OpportunityCategory category) =>
+      categories.isEmpty || categories.contains(category);
+
+  factory NotificationPreferences.fromMap(Map<String, dynamic> map) {
+    final rawCategories = map['categories'];
+    final categories = <OpportunityCategory>{};
+    if (rawCategories is List) {
+      for (final raw in rawCategories) {
+        categories.add(OpportunityCategoryX.parse(raw.toString()));
+      }
+    }
+
+    return NotificationPreferences(
+      categories: categories,
+      includeNew: map['include_new'] != false,
+      includeSavedDeadlines: map['include_saved_deadlines'] != false,
+      includeSubmissionUpdates: map['include_submission_updates'] != false,
+    );
+  }
+}
+
+class ContributionStats {
+  const ContributionStats({
+    required this.approvedCount,
+    required this.communityScore,
+    required this.level,
+  });
+
+  final int approvedCount;
+  final int communityScore;
+  final String level;
+
+  factory ContributionStats.fromMap(Map<String, dynamic> map) {
+    return ContributionStats(
+      approvedCount: _intOrZero(map['approved_count']),
+      communityScore: _intOrZero(map['community_score']),
+      level: (map['contribution_level'] ?? 'Nuevo').toString(),
+    );
+  }
+}
