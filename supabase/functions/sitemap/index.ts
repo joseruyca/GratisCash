@@ -39,8 +39,19 @@ Deno.serve(async (req: Request) => {
   }
 
   const rows = await response.json();
+  const categoryUrls = [
+    "/c/dinero",
+    "/c/gratis",
+    "/c/cashback",
+    "/c/bonus",
+    "/c/misiones",
+  ];
+
   const urls = [
     `<url><loc>${xml(SITE + "/")}</loc></url>`,
+    ...categoryUrls.map((path) =>
+      `<url><loc>${xml(SITE + path)}</loc></url>`
+    ),
     ...(Array.isArray(rows) ? rows : []).map((row: Record<string, unknown>) =>
       `<url><loc>${xml(`${SITE}/o/${row.id}`)}</loc>${row.updated_at ? `<lastmod>${xml(String(row.updated_at).slice(0,10))}</lastmod>` : ""}</url>`
     ),

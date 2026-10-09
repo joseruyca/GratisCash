@@ -120,19 +120,52 @@ Deno.serve(async (req: Request) => {
     );
 
     if (!looksLikeBot) {
-      try {
-        await fetch(new URL("/rest/v1/rpc/register_landing_visit", supabaseUrl), {
-          method: "POST",
-          headers: {
-            apikey: anonKey,
-            authorization: `Bearer ${anonKey}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({ p_opportunity_id: id }),
-        });
-      } catch (_) {
-        // Analytics are deliberately best-effort.
+      let acquisitionSource = "direct";
+      const explicitSource = (requestUrl.searchParams.get("src") ?? "").toLowerCase();
+      const referrer = (req.headers.get("referer") ?? "").trim();
+
+      if (explicitSource === "share") {
+        acquisitionSource = "share";
+      } else if (referrer) {
+        try {
+          const host = new URL(referrer).hostname.toLowerCase();
+          if (/(google\.|bing\.|duckduckgo\.|yahoo\.|ecosia\.)/.test(host)) {
+            acquisitionSource = "search";
+          } else if (
+            /(facebook\.|instagram\.|reddit\.|t\.co$|twitter\.|x\.com$|linkedin\.|threads\.|tiktok\.|youtube\.)/.test(
+              host,
+            )
+          ) {
+            acquisitionSource = "social";
+          } else if (!host.endsWith("gratiscashv1.vercel.app")) {
+            acquisitionSource = "referral";
+          }
+        } catch (_) {
+          acquisitionSource = "direct";
+        }
       }
+
+      const headers = {
+        apikey: anonKey,
+        authorization: `Bearer ${anonKey}`,
+        "content-type": "application/json",
+      };
+
+      await Promise.allSettled([
+        fetch(new URL("/rest/v1/rpc/register_landing_visit", supabaseUrl), {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ p_opportunity_id: id }),
+        }),
+        fetch(new URL("/rest/v1/rpc/register_landing_source", supabaseUrl), {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            p_opportunity_id: id,
+            p_source: acquisitionSource,
+          }),
+        }),
+      ]);
     }
   }
 

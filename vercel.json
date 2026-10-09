@@ -15,6 +15,10 @@
       "destination": "https://qmuyrobiqowcjgbpyliv.supabase.co/functions/v1/seo-opportunity?id=:id"
     },
     {
+      "source": "/c/:slug",
+      "destination": "https://qmuyrobiqowcjgbpyliv.supabase.co/functions/v1/seo-category?slug=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -195,6 +199,15 @@
         {
           "key": "X-Robots-Tag",
           "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/c/:slug",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "1"
         }
       ]
     }

@@ -1296,7 +1296,7 @@ class _MetricsTabState extends State<_MetricsTab> {
                   ),
                   subtitle: Text(
                     _acquisitionSubtitle(row),
-                    maxLines: 3,
+                    maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: SizedBox(
@@ -1339,9 +1339,21 @@ class _MetricsTabState extends State<_MetricsTab> {
     final revenue = _toDouble(row['revenue_total']);
     final currency = (row['monetization_currency'] ?? 'EUR').toString();
 
+    final shareLandings = _toInt(row['share_landings_30d']);
+    final searchLandings = _toInt(row['search_landings_30d']);
+    final socialLandings = _toInt(row['social_landings_30d']);
+    final referralLandings = _toInt(row['referral_landings_30d']);
+    final directLandings = _toInt(row['direct_landings_30d']);
+
     final commercial = _monetizationSubtitle(row);
+    final sources =
+        'Origen: $shareLandings compartido · $searchLandings buscador · '
+        '$socialLandings social · $referralLandings referido · '
+        '$directLandings directo';
+
     return '$shares compartidos · $landings landings · $clicks salidas · '
         '$conversions conv. · ${revenue.toStringAsFixed(2)} $currency\n'
+        '$sources\n'
         '$commercial';
   }
   String _monetizationSubtitle(Map<String, dynamic> row) {
