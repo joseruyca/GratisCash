@@ -1341,11 +1341,9 @@ class _MetricsTabState extends State<_MetricsTab> {
 
     final commercial = _monetizationSubtitle(row);
     return '$shares compartidos · $landings landings · $clicks salidas · '
-        '$conversions conv. · ${revenue.toStringAsFixed(2)} $currency'
-        '
-$commercial';
+        '$conversions conv. · ${revenue.toStringAsFixed(2)} $currency\n'
+        '$commercial';
   }
-
   String _monetizationSubtitle(Map<String, dynamic> row) {
     final model = (row['monetization_model'] ?? 'none').toString();
     final network = (row['monetization_network'] ?? '').toString().trim();
