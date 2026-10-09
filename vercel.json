@@ -12,7 +12,7 @@
     },
     {
       "source": "/o/:id",
-      "destination": "https://qmuyrobiqowcjgbpyliv.supabase.co/functions/v1/seo-opportunity"
+      "destination": "https://qmuyrobiqowcjgbpyliv.supabase.co/functions/v1/seo-opportunity?id=:id"
     },
     {
       "source": "/(.*)",

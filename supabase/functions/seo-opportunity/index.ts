@@ -113,6 +113,29 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  if (req.method === "GET") {
+    const userAgent = (req.headers.get("user-agent") ?? "").toLowerCase();
+    const looksLikeBot = /(bot|crawler|spider|facebookexternalhit|twitterbot|whatsapp|telegrambot|discordbot|slackbot|preview)/i.test(
+      userAgent,
+    );
+
+    if (!looksLikeBot) {
+      try {
+        await fetch(new URL("/rest/v1/rpc/register_landing_visit", supabaseUrl), {
+          method: "POST",
+          headers: {
+            apikey: anonKey,
+            authorization: `Bearer ${anonKey}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ p_opportunity_id: id }),
+        });
+      } catch (_) {
+        // Analytics are deliberately best-effort.
+      }
+    }
+  }
+
   const canonical = `${SITE}/o/${id}`;
   const appUrl = `${SITE}/opportunity/${id}`;
   const titleText = compact(item.title, 78);

@@ -19,6 +19,7 @@ abstract class GratisCashRepository {
   Future<Map<String, int>> voteStates(Iterable<String> opportunityIds);
   Future<void> toggleSaved(String opportunityId);
   Future<void> registerOutboundClick(String opportunityId);
+  Future<void> registerOpportunityShare(String opportunityId);
   Future<Set<String>> savedIds();
   Future<List<Opportunity>> savedOpportunities();
   Future<UserProfile?> currentProfile();
@@ -275,6 +276,19 @@ class SupabaseRepository implements GratisCashRepository {
       );
     } catch (_) {
       // Analytics are deliberately best-effort and never block the user.
+    }
+  }
+
+
+  @override
+  Future<void> registerOpportunityShare(String opportunityId) async {
+    try {
+      await db.rpc(
+        'register_opportunity_share',
+        params: {'p_opportunity_id': opportunityId},
+      );
+    } catch (_) {
+      // Analytics are deliberately best-effort and never block sharing.
     }
   }
 

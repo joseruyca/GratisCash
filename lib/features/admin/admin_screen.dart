@@ -1194,9 +1194,26 @@ class _MetricsTabState extends State<_MetricsTab> {
           );
         }
 
-        final total30d = rows.fold<int>(0, (sum, row) => sum + _toInt(row['clicks_30d']));
-        final conversions = rows.fold<int>(0, (sum, row) => sum + _toInt(row['conversions']));
-        final revenueTotal = rows.fold<double>(0, (sum, row) => sum + _toDouble(row['revenue_total']));
+        final shares30d = rows.fold<int>(
+          0,
+          (sum, row) => sum + _toInt(row['shares_30d']),
+        );
+        final landings30d = rows.fold<int>(
+          0,
+          (sum, row) => sum + _toInt(row['landing_visits_30d']),
+        );
+        final total30d = rows.fold<int>(
+          0,
+          (sum, row) => sum + _toInt(row['clicks_30d']),
+        );
+        final conversions = rows.fold<int>(
+          0,
+          (sum, row) => sum + _toInt(row['conversions']),
+        );
+        final revenueTotal = rows.fold<double>(
+          0,
+          (sum, row) => sum + _toDouble(row['revenue_total']),
+        );
         final monetized = rows.where((row) => (row['monetization_model'] ?? 'none').toString() != 'none').length;
 
         return ListView(
@@ -1206,10 +1223,36 @@ class _MetricsTabState extends State<_MetricsTab> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _MetricSummary(label: 'Salidas · 30 días', value: '$total30d', icon: Icons.open_in_new_rounded),
-                _MetricSummary(label: 'Ingresos registrados', value: '${revenueTotal.toStringAsFixed(2)} €', icon: Icons.euro_rounded),
-                _MetricSummary(label: 'Conversiones', value: '$conversions', icon: Icons.task_alt_rounded),
-                _MetricSummary(label: 'Monetizadas', value: '$monetized / ${rows.length}', icon: Icons.payments_outlined),
+                _MetricSummary(
+                  label: 'Compartidos · 30 días',
+                  value: '$shares30d',
+                  icon: Icons.ios_share_rounded,
+                ),
+                _MetricSummary(
+                  label: 'Landings · 30 días',
+                  value: '$landings30d',
+                  icon: Icons.travel_explore_rounded,
+                ),
+                _MetricSummary(
+                  label: 'Salidas · 30 días',
+                  value: '$total30d',
+                  icon: Icons.open_in_new_rounded,
+                ),
+                _MetricSummary(
+                  label: 'Conversiones',
+                  value: '$conversions',
+                  icon: Icons.task_alt_rounded,
+                ),
+                _MetricSummary(
+                  label: 'Ingresos registrados',
+                  value: '${revenueTotal.toStringAsFixed(2)} €',
+                  icon: Icons.euro_rounded,
+                ),
+                _MetricSummary(
+                  label: 'Monetizadas',
+                  value: '$monetized / ${rows.length}',
+                  icon: Icons.payments_outlined,
+                ),
               ],
             ),
             const SizedBox(height: 18),
@@ -1224,8 +1267,12 @@ class _MetricsTabState extends State<_MetricsTab> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Los clics son orientativos. Conversiones e ingresos deben venir de datos confirmados por la red o acuerdo comercial.',
-              style: TextStyle(color: GratisCashTheme.muted, fontSize: 12.5, height: 1.4),
+              'Embudo orientativo: compartidos → cargas de landing → salidas hacia la empresa → conversiones confirmadas. No guarda IP, email ni identidad del visitante.',
+              style: TextStyle(
+                color: GratisCashTheme.muted,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 12),
             for (final row in rows)
@@ -1247,7 +1294,11 @@ class _MetricsTabState extends State<_MetricsTab> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  subtitle: Text(_monetizationSubtitle(row), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    _acquisitionSubtitle(row),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   trailing: SizedBox(
                     width: widget.canEdit ? 150 : 92,
                     child: Row(
@@ -1278,6 +1329,21 @@ class _MetricsTabState extends State<_MetricsTab> {
         );
       },
     );
+  }
+
+  String _acquisitionSubtitle(Map<String, dynamic> row) {
+    final shares = _toInt(row['shares_30d']);
+    final landings = _toInt(row['landing_visits_30d']);
+    final clicks = _toInt(row['clicks_30d']);
+    final conversions = _toInt(row['conversions']);
+    final revenue = _toDouble(row['revenue_total']);
+    final currency = (row['monetization_currency'] ?? 'EUR').toString();
+
+    final commercial = _monetizationSubtitle(row);
+    return '$shares compartidos · $landings landings · $clicks salidas · '
+        '$conversions conv. · ${revenue.toStringAsFixed(2)} $currency'
+        '
+$commercial';
   }
 
   String _monetizationSubtitle(Map<String, dynamic> row) {
